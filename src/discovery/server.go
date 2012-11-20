@@ -30,12 +30,12 @@ func (s *Server) Serve(port uint16) (err error) {
 
 func (s *Server) processConnection(connection net.Conn) {
 	connection.SetReadDeadline(time.Now().Add(1 * time.Minute))
-	var proto Protocol
-	proto.SetIpFromAddr(connection.RemoteAddr())
-	log.Println("Connection from", proto.IpAddress)
-	err := proto.ReadRequest(connection)
+	//proto.SetIpFromAddr(connection.RemoteAddr())
+	//log.Println("Connection from", proto.IpAddress)
+	msg, err := readRequest(connection)
 	if err != nil {
 		log.Println("Error parsing request", err)
 	}
+	log.Printf("%#v", msg)
 	connection.Close()
 }
