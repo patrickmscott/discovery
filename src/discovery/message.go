@@ -15,7 +15,7 @@ const (
 type Message interface{}
 
 type JoinMessage struct {
-	Message
+	Host       string
 	Port       uint16
 	Group      string
 	CustomData []byte
@@ -23,6 +23,7 @@ type JoinMessage struct {
 
 type LeaveMessage struct {
 	Message
+	Host  string
 	Port  uint16
 	Group string
 }

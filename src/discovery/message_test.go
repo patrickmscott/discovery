@@ -35,9 +35,9 @@ func TestJoinMessageJson(t *testing.T) {
 	var join JoinMessage
 	var msg Message = &join
 	decoder := json.NewDecoder(strings.NewReader(`
-		{"Port":8080, "Group":"my_service"}
-		{"port":8080, "group":"my_service", "extra": true}
-		{"port":8080, "group":"my_service", "customData": "data"}`))
+		{"host": "host", "Port":8080, "Group":"my_service"}
+		{"host": "host", "port":8080, "group":"my_service", "extra": true}
+		{"host": "host", "port":8080, "group":"my_service", "customData": "data"}`))
 
 	for {
 		err := decoder.Decode(&msg)
@@ -56,7 +56,8 @@ func TestJoinMessageJson(t *testing.T) {
 		`{port:8080, group:my_service}`,
 		`{"port":"1", "group":"my_service"}`,
 		`{"port":0xff0000, "group":"my_service"}`,
-		`{"port":8080, "group": {}}`}
+		`{"port":8080, "group": {}}`,
+		`{"host":123}`}
 	for i := 0; i < len(data); i++ {
 		decoder = json.NewDecoder(strings.NewReader(data[i]))
 		err := decoder.Decode(&msg)
