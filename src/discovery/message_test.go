@@ -9,7 +9,7 @@ import (
 
 func TestSimpleStruct(t *testing.T) {
 	var watch WatchMessage
-	var msg Message = &watch
+	var msg interface{} = &watch
 	var decoder *json.Decoder = json.NewDecoder(
 		strings.NewReader("{\"groups\":[\"a\",\"b\"]}"))
 	err := decoder.Decode(&msg)
@@ -33,7 +33,7 @@ func TestSimpleStruct(t *testing.T) {
 
 func TestJoinMessageJson(t *testing.T) {
 	var join JoinMessage
-	var msg Message = &join
+	var msg interface{} = &join
 	decoder := json.NewDecoder(strings.NewReader(`
 		{"host": "host", "Port":8080, "Group":"my_service"}
 		{"host": "host", "port":8080, "group":"my_service", "extra": true}

@@ -9,7 +9,7 @@ import (
 
 type request struct {
 	messageType MessageType
-	message     Message
+	message     interface{}
 }
 
 func (r *request) Type() MessageType {

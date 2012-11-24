@@ -9,22 +9,46 @@ import (
 	"time"
 )
 
-type serviceEntry struct {
-	ipAddress net.IP
-	port      uint16
-	data      []byte
+func compareHostAndPort(a, b *JoinMessage) int {
+	if a.Host == b.Host {
+		return int(a.Port) - int(b.Port)
+	}
+	if a.Host < b.Host {
+		return -1
+	}
+	return 1
 }
 
-type serviceGroup struct {
-	entries list.List
+func addEntry(list *list.List, entry *JoinMessage) {
+	entry = entry.Copy()
+	for iter := list.Front(); iter != nil; iter = iter.Next() {
+		e := iter.Value.(*JoinMessage)
+		res := compareHostAndPort(entry, e)
+		if res < 0 {
+			list.InsertBefore(entry, iter)
+			return
+		} else if res == 0 {
+			iter.Value = entry
+			return
+		}
+	}
+	list.PushBack(entry)
 }
 
 type Server struct {
 	mutex  sync.Mutex
-	groups map[string]serviceGroup
+	groups map[string]*list.List
 }
 
 func (s *Server) Join(req *JoinMessage) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	services := s.groups[req.Group]
+	if services == nil {
+		services = &list.List{}
+		s.groups[req.Group] = services
+	}
+	addEntry(services, req)
 }
 
 func (s *Server) Serve(port uint16) (err error) {
@@ -45,11 +69,11 @@ func (s *Server) Serve(port uint16) (err error) {
 	return nil
 }
 
-func getIpAddress(addr net.Addr) net.IP {
+func getIpAddress(addr net.Addr) string {
 	tcpAddr := addr.(*net.TCPAddr)
-	ip := tcpAddr.IP.To4()
+	ip := tcpAddr.IP.To4().String()
 	if tcpAddr.IP.IsLoopback() {
-		ip = net.IPv4(127, 0, 0, 1)
+		ip = "127.0.0.1"
 	}
 	return ip
 }

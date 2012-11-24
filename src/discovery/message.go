@@ -12,8 +12,6 @@ const (
 	maxMessageSize = 1 * 1024 * 1024
 )
 
-type Message interface{}
-
 type JoinMessage struct {
 	Host       string
 	Port       uint16
@@ -21,8 +19,12 @@ type JoinMessage struct {
 	CustomData []byte
 }
 
+// Returns a shallow copy of the join message.
+func (join *JoinMessage) Copy() *JoinMessage {
+	return &JoinMessage{join.Host, join.Port, join.Group, join.CustomData}
+}
+
 type LeaveMessage struct {
-	Message
 	Host  string
 	Port  uint16
 	Group string
@@ -30,16 +32,12 @@ type LeaveMessage struct {
 
 // A snapshot only applies to a single group.
 type SnapshotMessage struct {
-	Message
 	Group string
 }
 
 // A watch message contains a list of groups to watch on the connection.
 type WatchMessage struct {
-	Message
 	Groups []string
 }
 
-type HeartbeatMessage struct {
-	Message
-}
+type HeartbeatMessage struct{}
