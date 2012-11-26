@@ -55,7 +55,7 @@ func TestAddEntry(t *testing.T) {
 	}
 }
 
-func TestJoinMessageCompare(t *testing.T) {
+func TestCompareHostAndPort(t *testing.T) {
 	var a, b JoinMessage
 	a.Host = "host1"
 	b.Host = "host2"
@@ -78,6 +78,49 @@ func TestJoinMessageCompare(t *testing.T) {
 	}
 	b.Port = 1000
 	if compareHostAndPort(&a, &b) != 0 {
+		t.Error()
+	}
+}
+
+func TestServerInit(t *testing.T) {
+	var server Server
+	if server.groups != nil {
+		t.Error()
+	}
+	server.Init()
+	if server.groups == nil || len(server.groups) != 0 {
+		t.Error()
+	}
+	server.groups["group"] = &list.List{}
+	if len(server.groups) != 1 {
+		t.Error()
+	}
+	server.Init()
+	if len(server.groups) != 0 {
+		t.Error()
+	}
+}
+
+func TestServerJoin(t *testing.T) {
+	var server Server
+	server.Init()
+	var join JoinMessage
+	join.Host = "host"
+	join.Port = 8080
+	join.Group = "my group"
+	server.Join(&join)
+	if server.groups["my group"].Len() != 1 {
+		t.Error()
+	}
+	if len(server.groups) != 1 {
+		t.Error()
+	}
+	join.CustomData = make([]byte, 5)
+	server.Join(&join)
+	if server.groups["my group"].Len() != 1 {
+		t.Error()
+	}
+	if server.groups["my group"].Front().Value.(*JoinMessage).CustomData == nil {
 		t.Error()
 	}
 }

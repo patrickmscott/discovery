@@ -40,6 +40,16 @@ type Server struct {
 	groups map[string]*list.List
 }
 
+// Initialize the server state. Also can be used to reset the server at any
+// point.
+func (s *Server) Init() {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.groups = make(map[string]*list.List)
+}
+
+// Add the given JoinMessage as an entry in the set of services. If the host and
+// port already exist in the group, the entry is replaced.
 func (s *Server) Join(req *JoinMessage) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -51,6 +61,7 @@ func (s *Server) Join(req *JoinMessage) {
 	addEntry(services, req)
 }
 
+// Listen for connections on the given port.
 func (s *Server) Serve(port uint16) (err error) {
 	log.Println("Listening on port", port)
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
