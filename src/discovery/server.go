@@ -61,6 +61,34 @@ func (s *Server) Join(req *JoinMessage) {
 	addEntry(services, req)
 }
 
+// Return value for Snapshot. Contains individual service information suitable
+// for json serialization to a client.
+type ServiceBroadcast struct {
+	host string
+	port uint16
+	customData []byte
+}
+
+func (s *Server) Snapshot(group string) []ServiceBroadcast {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	services := s.groups[group]
+	if services == nil {
+		return nil
+	}
+	slice := make([]ServiceBroadcast, services.Len())
+	i := 0
+	for iter := services.Front(); iter != nil; iter = iter.Next() {
+		join := iter.Value.(*JoinMessage)
+		broadcast := &slice[i]
+		broadcast.host = join.Host
+		broadcast.port = join.Port
+		broadcast.customData = join.CustomData
+		i++
+	}
+	return slice
+}
+
 // Listen for connections on the given port.
 func (s *Server) Serve(port uint16) (err error) {
 	log.Println("Listening on port", port)

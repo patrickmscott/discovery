@@ -124,3 +124,53 @@ func TestServerJoin(t *testing.T) {
 		t.Error()
 	}
 }
+
+func TestServerSnapshot(t *testing.T) {
+	var server Server
+	server.Init()
+	result := server.Snapshot("group")
+	if result != nil {
+		t.Error()
+	}
+	var join JoinMessage
+	join.Host = "host1"
+	join.Port = 8080
+	join.Group = "group1"
+	server.Join(&join)
+	join.Host = "host2"
+	join.Group = "group2"
+	server.Join(&join)
+	result = server.Snapshot("group")
+	if result != nil {
+		t.Error()
+	}
+	result = server.Snapshot("group1")
+	if len(result) != 1 {
+		t.Error()
+	}
+	service := result[0]
+	if service.host != "host1" || service.port != 8080 {
+		t.Error()
+	}
+	result = server.Snapshot("group2")
+	if len(result) != 1 {
+		t.Error()
+	}
+	service = result[0]
+	if service.host != "host2" || service.port != 8080 {
+		t.Error()
+	}
+}
+
+func BenchmarkSnapshot(b *testing.B) {
+	var server Server
+	server.Init()
+	var join JoinMessage
+	join.Host = "host"
+	join.Group = "group"
+	for i := 0; i < b.N; i++ {
+		join.Port = uint16(i)
+		server.Join(&join)
+		server.Snapshot("group")
+	}
+}
