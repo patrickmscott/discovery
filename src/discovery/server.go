@@ -35,6 +35,22 @@ func addEntry(list *list.List, entry *JoinMessage) {
 	list.PushBack(entry)
 }
 
+// Remove the given entry from the list. Compares Host and Port until an entry
+// is found.
+func removeEntry(list *list.List, entry *LeaveMessage) {
+	for iter := list.Front(); iter != nil; iter = iter.Next() {
+		e := iter.Value.(*JoinMessage)
+		if e.Host > entry.Host {
+			// The list is sorted alphabetically so we know that the entry does not
+			// exist.
+			break
+		} else if e.Host == entry.Host && e.Port == entry.Port {
+			list.Remove(iter)
+			break
+		}
+	}
+}
+
 type Server struct {
 	mutex  sync.Mutex
 	groups map[string]*list.List
@@ -51,6 +67,7 @@ func (s *Server) Init() {
 // Add the given JoinMessage as an entry in the set of services. If the host and
 // port already exist in the group, the entry is replaced.
 func (s *Server) Join(req *JoinMessage) {
+	log.Printf("Join: '%s' %s:%d\n", req.Group, req.Host, req.Port)
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	services := s.groups[req.Group]
@@ -59,6 +76,19 @@ func (s *Server) Join(req *JoinMessage) {
 		s.groups[req.Group] = services
 	}
 	addEntry(services, req)
+}
+
+// Handle a leave event. This mostly happens when multiple services are
+// broadcast on the same connection and one service leaves a group.
+func (s *Server) Leave(req *LeaveMessage) {
+	log.Printf("Leave: '%s' %s:%d\n", req.Group, req.Host, req.Port)
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	services := s.groups[req.Group]
+	if services == nil {
+		return
+	}
+	removeEntry(services, req)
 }
 
 // Return value for Snapshot. Contains individual service information suitable
@@ -73,7 +103,7 @@ func (s *Server) Snapshot(group string) []ServiceBroadcast {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	services := s.groups[group]
-	if services == nil {
+	if services == nil || services.Len() == 0 {
 		return nil
 	}
 	slice := make([]ServiceBroadcast, services.Len())
@@ -129,11 +159,9 @@ func (s *Server) handleConnection(connection net.Conn) {
 
 		switch req.Type() {
 		case joinMessage:
-			msg := req.ToJoin()
-			log.Println("JOIN:", msg.Group, msg.Port)
+			s.Join(req.ToJoin())
 		case leaveMessage:
-			msg := req.ToLeave()
-			log.Println("LEAVE:", msg.Group, msg.Port)
+			s.Leave(req.ToLeave())
 		case snapshotMessage:
 			msg := req.ToSnapshot()
 			log.Println("SNAPSHOT:", msg.Group)

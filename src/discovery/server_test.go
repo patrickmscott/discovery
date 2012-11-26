@@ -162,6 +162,40 @@ func TestServerSnapshot(t *testing.T) {
 	}
 }
 
+func TestServerLeave(t *testing.T) {
+	var server Server
+	server.Init()
+	var join JoinMessage
+	join.Host = "host"
+	join.Port = 8080
+	join.Group = "group"
+	server.Join(&join)
+	result := server.Snapshot("group")
+	if result == nil || len(result) != 1 {
+		t.Error()
+	}
+
+	var leave LeaveMessage
+	leave.Host = "host"
+	leave.Port = 8080
+	leave.Group = "group1"
+	server.Leave(&leave)
+	result = server.Snapshot("group")
+	if result == nil || len(result) != 1 {
+		t.Error()
+	}
+	result = server.Snapshot("group1")
+	if result != nil {
+		t.Error()
+	}
+	leave.Group = "group"
+	server.Leave(&leave)
+	result = server.Snapshot("group")
+	if result != nil {
+		t.Error()
+	}
+}
+
 func BenchmarkSnapshot(b *testing.B) {
 	var server Server
 	server.Init()
