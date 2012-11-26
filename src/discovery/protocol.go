@@ -104,3 +104,27 @@ func fill(in io.Reader, buffer []byte) error {
 	}
 	return nil
 }
+
+func writeSnapshot(out io.Writer, snapshot []ServiceBroadcast) error {
+	buffer := &bytes.Buffer{}
+	if snapshot != nil {
+		enc := json.NewEncoder(buffer)
+		err := enc.Encode(snapshot)
+		if err != nil {
+			return err
+		}
+	}
+	var length [4]byte
+	length[0] = byte(buffer.Len() >> 24)
+	length[1] = byte(buffer.Len() >> 16)
+	length[2] = byte(buffer.Len() >> 8)
+	length[3] = byte(buffer.Len())
+	_, err := out.Write(length[0:])
+	if err != nil {
+		return err
+	}
+	if buffer.Len() != 0 {
+		_, err = out.Write(buffer.Bytes())
+	}
+	return err
+}

@@ -149,7 +149,7 @@ func TestServerSnapshot(t *testing.T) {
 		t.Error()
 	}
 	service := result[0]
-	if service.host != "host1" || service.port != 8080 {
+	if service.Host != "host1" || service.Port != 8080 {
 		t.Error()
 	}
 	result = server.Snapshot("group2")
@@ -157,7 +157,7 @@ func TestServerSnapshot(t *testing.T) {
 		t.Error()
 	}
 	service = result[0]
-	if service.host != "host2" || service.port != 8080 {
+	if service.Host != "host2" || service.Port != 8080 {
 		t.Error()
 	}
 }

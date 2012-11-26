@@ -2,6 +2,7 @@ package discovery
 
 import (
 	"bytes"
+	"encoding/json"
 	"math"
 	"testing"
 )
@@ -81,5 +82,42 @@ func TestMessageTypes(t *testing.T) {
 		if err == nil || err.Error() != "Invalid message type" {
 			t.Error(err)
 		}
+	}
+}
+
+func readSize(buffer *bytes.Buffer) int {
+	bytes := buffer.Next(4)
+	return int(bytes[0]<<24 | bytes[1]<<16 | bytes[2]<<8 | bytes[3])
+}
+
+func TestWriteSnapshot(t *testing.T) {
+	var output bytes.Buffer
+	err := writeSnapshot(&output, nil)
+	if err != nil {
+		t.Error(err)
+	}
+	if output.Len() != 4 || readSize(&output) != 0 {
+		t.Error()
+	}
+	output.Reset()
+	slice := make([]ServiceBroadcast, 1)
+	slice[0].Host = "host"
+	slice[0].Port = 8080
+	err = writeSnapshot(&output, slice)
+	if err != nil {
+		t.Error()
+	}
+	readSize(&output)
+	dec := json.NewDecoder(&output)
+	var snapshot []ServiceBroadcast
+	err = dec.Decode(&snapshot)
+	if err != nil {
+		t.Error()
+	}
+	if len(snapshot) != 1 {
+		t.Error()
+	}
+	if snapshot[0].Host != "host" || snapshot[0].Port != 8080 {
+		t.Error()
 	}
 }

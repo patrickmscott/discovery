@@ -94,12 +94,13 @@ func (s *Server) Leave(req *LeaveMessage) {
 // Return value for Snapshot. Contains individual service information suitable
 // for json serialization to a client.
 type ServiceBroadcast struct {
-	host string
-	port uint16
-	customData []byte
+	Host       string `json:"host"`
+	Port       uint16 `json:"port"`
+	CustomData []byte `json:"customData,omitempty"`
 }
 
 func (s *Server) Snapshot(group string) []ServiceBroadcast {
+	log.Printf("Snapshot: '%s'\n", group)
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	services := s.groups[group]
@@ -111,9 +112,9 @@ func (s *Server) Snapshot(group string) []ServiceBroadcast {
 	for iter := services.Front(); iter != nil; iter = iter.Next() {
 		join := iter.Value.(*JoinMessage)
 		broadcast := &slice[i]
-		broadcast.host = join.Host
-		broadcast.port = join.Port
-		broadcast.customData = join.CustomData
+		broadcast.Host = join.Host
+		broadcast.Port = join.Port
+		broadcast.CustomData = join.CustomData
 		i++
 	}
 	return slice
@@ -164,7 +165,10 @@ func (s *Server) handleConnection(connection net.Conn) {
 			s.Leave(req.ToLeave())
 		case snapshotMessage:
 			msg := req.ToSnapshot()
-			log.Println("SNAPSHOT:", msg.Group)
+			result := s.Snapshot(msg.Group)
+			if err := writeSnapshot(connection, result); err != nil {
+				break
+			}
 		case watchMessage:
 			msg := req.ToWatch()
 			log.Println("WATCH:", msg.Groups)
