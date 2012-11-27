@@ -93,13 +93,13 @@ func (s *Server) Leave(req *LeaveMessage) {
 
 // Return value for Snapshot. Contains individual service information suitable
 // for json serialization to a client.
-type ServiceBroadcast struct {
+type ServiceDefinition struct {
 	Host       string `json:"host"`
 	Port       uint16 `json:"port"`
 	CustomData []byte `json:"customData,omitempty"`
 }
 
-func (s *Server) Snapshot(group string) []ServiceBroadcast {
+func (s *Server) Snapshot(group string) []ServiceDefinition {
 	log.Printf("Snapshot: '%s'\n", group)
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -107,7 +107,7 @@ func (s *Server) Snapshot(group string) []ServiceBroadcast {
 	if services == nil || services.Len() == 0 {
 		return nil
 	}
-	slice := make([]ServiceBroadcast, services.Len())
+	slice := make([]ServiceDefinition, services.Len())
 	i := 0
 	for iter := services.Front(); iter != nil; iter = iter.Next() {
 		join := iter.Value.(*JoinMessage)

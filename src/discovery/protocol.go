@@ -105,7 +105,7 @@ func fill(in io.Reader, buffer []byte) error {
 	return nil
 }
 
-func writeSnapshot(out io.Writer, snapshot []ServiceBroadcast) error {
+func writeSnapshot(out io.Writer, snapshot []ServiceDefinition) error {
 	buffer := &bytes.Buffer{}
 	if snapshot != nil {
 		enc := json.NewEncoder(buffer)

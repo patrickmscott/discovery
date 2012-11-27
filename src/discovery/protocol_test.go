@@ -100,7 +100,7 @@ func TestWriteSnapshot(t *testing.T) {
 		t.Error()
 	}
 	output.Reset()
-	slice := make([]ServiceBroadcast, 1)
+	slice := make([]ServiceDefinition, 1)
 	slice[0].Host = "host"
 	slice[0].Port = 8080
 	err = writeSnapshot(&output, slice)
@@ -109,7 +109,7 @@ func TestWriteSnapshot(t *testing.T) {
 	}
 	readSize(&output)
 	dec := json.NewDecoder(&output)
-	var snapshot []ServiceBroadcast
+	var snapshot []ServiceDefinition
 	err = dec.Decode(&snapshot)
 	if err != nil {
 		t.Error()
