@@ -131,6 +131,17 @@ func (p *Protocol) writeJson(out io.Writer, obj interface{}) error {
 	return p.writeBytes(out, buffer.Bytes())
 }
 
+func (p *Protocol) writeRequest(out io.Writer, request Request) error {
+	buffer := bytes.NewBuffer(p.buffer[0:0])
+	buffer.WriteByte(byte(request.Type()))
+	enc := json.NewEncoder(buffer)
+	err := enc.Encode(request)
+	if err != nil {
+		return err
+	}
+	return p.writeBytes(out, buffer.Bytes())
+}
+
 func (p *Protocol) writeBytes(out io.Writer, bytes []byte) error {
 	if err := p.writeInt(out, magicNumber); err != nil {
 		return err
