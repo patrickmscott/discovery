@@ -8,43 +8,6 @@ import (
 	"io"
 )
 
-type request struct {
-	messageType MessageType
-	message     interface{}
-}
-
-func (r *request) Type() MessageType {
-	return r.messageType
-}
-
-func (r *request) ToJoin() *JoinMessage {
-	if r.messageType != joinMessage {
-		return nil
-	}
-	return r.message.(*JoinMessage)
-}
-
-func (r *request) ToLeave() *LeaveMessage {
-	if r.messageType != leaveMessage {
-		return nil
-	}
-	return r.message.(*LeaveMessage)
-}
-
-func (r *request) ToSnapshot() *SnapshotMessage {
-	if r.messageType != snapshotMessage {
-		return nil
-	}
-	return r.message.(*SnapshotMessage)
-}
-
-func (r *request) ToWatch() *WatchMessage {
-	if r.messageType != watchMessage {
-		return nil
-	}
-	return r.message.(*WatchMessage)
-}
-
 type Protocol struct {
 	buffer [512]byte
 }
@@ -78,14 +41,17 @@ func (p *Protocol) writeInt(out io.Writer, i int) error {
 	return err
 }
 
-const magicNumber int = 1412959279
+const (
+	magicNumber    = 1412959279
+	maxRequestSize = 1 * 1024 * 1024
+)
 
 var ErrMagicNumber = errors.New("Invalid magic number")
 var ErrChecksum = errors.New("Invalid checksum")
-var ErrMessageSize = errors.New("Invalid message size")
-var ErrMessageType = errors.New("Invalid message type")
+var ErrRequestSize = errors.New("Invalid request size")
+var ErrRequestType = errors.New("Invalid request type")
 
-func (p *Protocol) readRequest(in io.Reader) (*request, error) {
+func (p *Protocol) readRequest(in io.Reader) (Request, error) {
 	// Read the 4 byte magic number
 	magic, err := p.readInt(in)
 	if err != nil || magic != magicNumber {
@@ -98,10 +64,10 @@ func (p *Protocol) readRequest(in io.Reader) (*request, error) {
 		return nil, ErrChecksum
 	}
 
-	// Read 4 bytes for the size of the message.
+	// Read 4 bytes for the size of the request.
 	size, err := p.readInt(in)
-	if err != nil || size > maxMessageSize {
-		return nil, ErrMessageSize
+	if err != nil || size > maxRequestSize {
+		return nil, ErrRequestSize
 	}
 
 	// Allocate a buffer if needed and read fully.
@@ -129,28 +95,28 @@ func (p *Protocol) readRequest(in io.Reader) (*request, error) {
 		return nil, ErrChecksum
 	}
 
-	var req request
 	// The first byte should be a valid type.
-	req.messageType = MessageType(buffer[0])
-	if req.Type() < 0 || req.Type() >= lastMessageType {
-		return &req, ErrMessageType
+	requestType := RequestType(buffer[0])
+	if requestType < 0 || requestType >= lastRequestType {
+		return nil, ErrRequestType
 	}
 
+	var req Request
 	dec := json.NewDecoder(bytes.NewBuffer(buffer[1:]))
-	switch req.Type() {
-	case joinMessage:
-		req.message = &JoinMessage{}
-	case leaveMessage:
-		req.message = &LeaveMessage{}
-	case snapshotMessage:
-		req.message = &SnapshotMessage{}
-	case watchMessage:
-		req.message = &WatchMessage{}
-	case heartbeatMessage:
-		return &request{heartbeatMessage, nil}, nil
+	switch requestType {
+	case joinRequest:
+		req = &JoinRequest{}
+	case leaveRequest:
+		req = &LeaveRequest{}
+	case snapshotRequest:
+		req = &SnapshotRequest{}
+	case watchRequest:
+		req = &WatchRequest{}
+	case heartbeatRequest:
+		return &HeartbeatRequest{}, nil
 	}
-	err = dec.Decode(req.message)
-	return &req, err
+	err = dec.Decode(req)
+	return req, err
 }
 
 func (p *Protocol) writeJson(out io.Writer, obj interface{}) error {

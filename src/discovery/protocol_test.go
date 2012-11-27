@@ -62,14 +62,14 @@ func TestChecksum(t *testing.T) {
 	}
 }
 
-func TestInvalidMessageSize(t *testing.T) {
+func TestInvalidRequestSize(t *testing.T) {
 	var proto Protocol
 	var buffer bytes.Buffer
 	proto.writeInt(&buffer, magicNumber)
 	proto.writeInt(&buffer, 0) // checksum
 	buffer.WriteByte(0)
 	_, err := proto.readRequest(&buffer)
-	if err == nil || err != ErrMessageSize {
+	if err == nil || err != ErrRequestSize {
 		t.Error(err)
 	}
 	buffer.Reset()
@@ -77,12 +77,12 @@ func TestInvalidMessageSize(t *testing.T) {
 	proto.writeInt(&buffer, 0) // checksum
 	proto.writeInt(&buffer, 2*1024*1024)
 	_, err = proto.readRequest(&buffer)
-	if err == nil || err != ErrMessageSize {
+	if err == nil || err != ErrRequestSize {
 		t.Error(err)
 	}
 }
 
-func TestMessageTooShort(t *testing.T) {
+func TestRequestTooShort(t *testing.T) {
 	var proto Protocol
 	var buffer bytes.Buffer
 	proto.writeInt(&buffer, magicNumber)
@@ -104,12 +104,12 @@ func TestMessageTooShort(t *testing.T) {
 	}
 }
 
-func TestMessageTypes(t *testing.T) {
+func TestRequestTypes(t *testing.T) {
 	var proto Protocol
 	var buffer bytes.Buffer
 
-	var i MessageType
-	for i = 0; i < lastMessageType; i++ {
+	var i RequestType
+	for i = 0; i < lastRequestType; i++ {
 		var bytes [1]byte
 		bytes[0] = byte(i)
 		buffer.Reset()
@@ -126,7 +126,7 @@ func TestMessageTypes(t *testing.T) {
 		}
 	}
 
-	for i = lastMessageType; i < math.MaxUint8; i++ {
+	for i = lastRequestType; i < math.MaxUint8; i++ {
 		var bytes [1]byte
 		bytes[0] = byte(i)
 		buffer.Reset()
@@ -135,7 +135,7 @@ func TestMessageTypes(t *testing.T) {
 		proto.writeInt(&buffer, 1) // size
 		buffer.Write(bytes[0:])
 		_, err := proto.readRequest(&buffer)
-		if err == nil || err != ErrMessageType {
+		if err == nil || err != ErrRequestType {
 			t.Error(err)
 		}
 	}

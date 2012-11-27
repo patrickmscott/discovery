@@ -8,7 +8,7 @@ import (
 )
 
 func TestSimpleStruct(t *testing.T) {
-	var watch WatchMessage
+	var watch WatchRequest
 	var msg interface{} = &watch
 	var decoder *json.Decoder = json.NewDecoder(
 		strings.NewReader("{\"groups\":[\"a\",\"b\"]}"))
@@ -31,8 +31,8 @@ func TestSimpleStruct(t *testing.T) {
 	}
 }
 
-func TestJoinMessageJson(t *testing.T) {
-	var join JoinMessage
+func TestJoinRequestJson(t *testing.T) {
+	var join JoinRequest
 	var msg interface{} = &join
 	decoder := json.NewDecoder(strings.NewReader(`
 		{"host": "host", "Port":8080, "Group":"my_service"}

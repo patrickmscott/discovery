@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func compareHostAndPort(a, b *JoinMessage) int {
+func compareHostAndPort(a, b *JoinRequest) int {
 	if a.Host == b.Host {
 		return int(a.Port) - int(b.Port)
 	}
@@ -19,10 +19,10 @@ func compareHostAndPort(a, b *JoinMessage) int {
 	return 1
 }
 
-func addEntry(list *list.List, entry *JoinMessage) {
+func addEntry(list *list.List, entry *JoinRequest) {
 	entry = entry.Copy()
 	for iter := list.Front(); iter != nil; iter = iter.Next() {
-		e := iter.Value.(*JoinMessage)
+		e := iter.Value.(*JoinRequest)
 		res := compareHostAndPort(entry, e)
 		if res < 0 {
 			list.InsertBefore(entry, iter)
@@ -37,9 +37,9 @@ func addEntry(list *list.List, entry *JoinMessage) {
 
 // Remove the given entry from the list. Compares Host and Port until an entry
 // is found.
-func removeEntry(list *list.List, entry *LeaveMessage) {
+func removeEntry(list *list.List, entry *LeaveRequest) {
 	for iter := list.Front(); iter != nil; iter = iter.Next() {
-		e := iter.Value.(*JoinMessage)
+		e := iter.Value.(*JoinRequest)
 		if e.Host > entry.Host {
 			// The list is sorted alphabetically so we know that the entry does not
 			// exist.
@@ -64,9 +64,9 @@ func (s *Server) Init() {
 	s.groups = make(map[string]*list.List)
 }
 
-// Add the given JoinMessage as an entry in the set of services. If the host and
+// Add the given JoinRequest as an entry in the set of services. If the host and
 // port already exist in the group, the entry is replaced.
-func (s *Server) Join(req *JoinMessage) {
+func (s *Server) Join(req *JoinRequest) {
 	log.Printf("Join: '%s' %s:%d\n", req.Group, req.Host, req.Port)
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -80,7 +80,7 @@ func (s *Server) Join(req *JoinMessage) {
 
 // Handle a leave event. This mostly happens when multiple services are
 // broadcast on the same connection and one service leaves a group.
-func (s *Server) Leave(req *LeaveMessage) {
+func (s *Server) Leave(req *LeaveRequest) {
 	log.Printf("Leave: '%s' %s:%d\n", req.Group, req.Host, req.Port)
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -110,7 +110,7 @@ func (s *Server) Snapshot(group string) []ServiceDefinition {
 	slice := make([]ServiceDefinition, services.Len())
 	i := 0
 	for iter := services.Front(); iter != nil; iter = iter.Next() {
-		join := iter.Value.(*JoinMessage)
+		join := iter.Value.(*JoinRequest)
 		broadcast := &slice[i]
 		broadcast.Host = join.Host
 		broadcast.Port = join.Port
@@ -160,21 +160,21 @@ func (s *Server) handleConnection(connection net.Conn) {
 		}
 
 		switch req.Type() {
-		case joinMessage:
-			s.Join(req.ToJoin())
-		case leaveMessage:
-			s.Leave(req.ToLeave())
-		case snapshotMessage:
-			msg := req.ToSnapshot()
+		case joinRequest:
+			s.Join(req.(*JoinRequest))
+		case leaveRequest:
+			s.Leave(req.(*LeaveRequest))
+		case snapshotRequest:
+			msg := req.(*SnapshotRequest)
 			result := s.Snapshot(msg.Group)
 			connection.SetWriteDeadline(time.Now().Add(1 * time.Minute))
 			if err := proto.writeJson(connection, result); err != nil {
 				break
 			}
-		case watchMessage:
-			msg := req.ToWatch()
+		case watchRequest:
+			msg := req.(*WatchRequest)
 			log.Println("WATCH:", msg.Groups)
-		case heartbeatMessage:
+		case heartbeatRequest:
 		}
 	}
 	connection.Close()

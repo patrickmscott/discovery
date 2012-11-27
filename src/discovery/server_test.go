@@ -7,7 +7,7 @@ import (
 
 func TestAddEntry(t *testing.T) {
 	var list list.List
-	var join JoinMessage
+	var join JoinRequest
 	addEntry(&list, &join)
 	if list.Len() != 1 {
 		t.Error()
@@ -17,11 +17,11 @@ func TestAddEntry(t *testing.T) {
 	if list.Len() != 2 {
 		t.Error()
 	}
-	e := list.Front().Value.(*JoinMessage)
+	e := list.Front().Value.(*JoinRequest)
 	if e.Host != "" {
 		t.Error(e.Host)
 	}
-	e = list.Back().Value.(*JoinMessage)
+	e = list.Back().Value.(*JoinRequest)
 	if e.Host != "host" {
 		t.Error(e.Host)
 	}
@@ -34,7 +34,7 @@ func TestAddEntry(t *testing.T) {
 	if list.Len() != 2 {
 		t.Error()
 	}
-	e = list.Back().Value.(*JoinMessage)
+	e = list.Back().Value.(*JoinRequest)
 	if e.CustomData == nil {
 		t.Error()
 	}
@@ -47,7 +47,7 @@ func TestAddEntry(t *testing.T) {
 	}
 	var i uint16 = 0
 	for elem := list.Front(); elem != nil; elem = elem.Next() {
-		e = elem.Value.(*JoinMessage)
+		e = elem.Value.(*JoinRequest)
 		if e.Port != i {
 			t.Error()
 		}
@@ -56,7 +56,7 @@ func TestAddEntry(t *testing.T) {
 }
 
 func TestCompareHostAndPort(t *testing.T) {
-	var a, b JoinMessage
+	var a, b JoinRequest
 	a.Host = "host1"
 	b.Host = "host2"
 	if compareHostAndPort(&a, &b) != -1 {
@@ -104,7 +104,7 @@ func TestServerInit(t *testing.T) {
 func TestServerJoin(t *testing.T) {
 	var server Server
 	server.Init()
-	var join JoinMessage
+	var join JoinRequest
 	join.Host = "host"
 	join.Port = 8080
 	join.Group = "my group"
@@ -120,7 +120,7 @@ func TestServerJoin(t *testing.T) {
 	if server.groups["my group"].Len() != 1 {
 		t.Error()
 	}
-	if server.groups["my group"].Front().Value.(*JoinMessage).CustomData == nil {
+	if server.groups["my group"].Front().Value.(*JoinRequest).CustomData == nil {
 		t.Error()
 	}
 }
@@ -132,7 +132,7 @@ func TestServerSnapshot(t *testing.T) {
 	if result != nil {
 		t.Error()
 	}
-	var join JoinMessage
+	var join JoinRequest
 	join.Host = "host1"
 	join.Port = 8080
 	join.Group = "group1"
@@ -165,7 +165,7 @@ func TestServerSnapshot(t *testing.T) {
 func TestServerLeave(t *testing.T) {
 	var server Server
 	server.Init()
-	var join JoinMessage
+	var join JoinRequest
 	join.Host = "host"
 	join.Port = 8080
 	join.Group = "group"
@@ -175,7 +175,7 @@ func TestServerLeave(t *testing.T) {
 		t.Error()
 	}
 
-	var leave LeaveMessage
+	var leave LeaveRequest
 	leave.Host = "host"
 	leave.Port = 8080
 	leave.Group = "group1"
@@ -199,7 +199,7 @@ func TestServerLeave(t *testing.T) {
 func BenchmarkSnapshot(b *testing.B) {
 	var server Server
 	server.Init()
-	var join JoinMessage
+	var join JoinRequest
 	join.Host = "host"
 	join.Group = "group"
 	for i := 0; i < b.N; i++ {
