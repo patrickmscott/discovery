@@ -149,10 +149,11 @@ func getIpAddress(addr net.Addr) string {
 }
 
 func (s *Server) handleConnection(connection net.Conn) {
+	var proto Protocol
 	log.Println("Handling connection from", getIpAddress(connection.RemoteAddr()))
 	for {
 		connection.SetReadDeadline(time.Now().Add(1 * time.Minute))
-		req, err := readRequest(connection)
+		req, err := proto.readRequest(connection)
 		if err != nil {
 			log.Println("Error parsing request", err)
 			break
@@ -166,7 +167,7 @@ func (s *Server) handleConnection(connection net.Conn) {
 		case snapshotMessage:
 			msg := req.ToSnapshot()
 			result := s.Snapshot(msg.Group)
-			if err := writeSnapshot(connection, result); err != nil {
+			if err := proto.writeSnapshot(connection, result); err != nil {
 				break
 			}
 		case watchMessage:

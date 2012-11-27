@@ -3,71 +3,123 @@ package discovery
 import (
 	"bytes"
 	"encoding/json"
+	"hash/crc32"
+	"io"
 	"math"
 	"testing"
 )
 
-func TestBadSizeLength(t *testing.T) {
-	_, err := readRequest(&bytes.Buffer{})
+func TestMagicNumber(t *testing.T) {
+	var proto Protocol
+	_, err := proto.readRequest(&bytes.Buffer{})
 	if err == nil {
 		t.Error()
 	}
 
 	var buffer bytes.Buffer
-	buffer.WriteByte(0)
-	_, err = readRequest(&buffer)
-	if err == nil {
-		t.Error()
+	proto.writeInt(&buffer, 1234)
+	_, err = proto.readRequest(&buffer)
+	if err == nil || err != ErrMagicNumber {
+		t.Error(err)
+	}
+
+	buffer.Reset()
+	proto.writeInt(&buffer, magicNumber)
+	_, err = proto.readRequest(&buffer)
+	if err != nil && err == ErrMagicNumber {
+		t.Error(err)
 	}
 }
 
-func writeLength(buffer *bytes.Buffer, length uint) {
-	buffer.WriteByte(byte(length >> 24))
-	buffer.WriteByte(byte(length >> 16))
-	buffer.WriteByte(byte(length >> 8))
-	buffer.WriteByte(byte(length))
+func TestChecksum(t *testing.T) {
+	var proto Protocol
+	var buffer bytes.Buffer
+	proto.writeInt(&buffer, magicNumber)
+	_, err := proto.readRequest(&buffer)
+	if err == nil || err != ErrChecksum {
+		t.Error(err)
+	}
+
+	buffer.Reset()
+	proto.writeInt(&buffer, magicNumber)
+	proto.writeInt(&buffer, 0)
+	proto.writeInt(&buffer, 1) // size
+	buffer.WriteByte(0)
+	_, err = proto.readRequest(&buffer)
+	if err == nil || err != ErrChecksum {
+		t.Error(err)
+	}
+
+	var bytes []byte = []byte{0, '{', '}'}
+	buffer.Reset()
+	proto.writeInt(&buffer, magicNumber)
+	proto.writeInt(&buffer, int(crc32.ChecksumIEEE(bytes)))
+	proto.writeInt(&buffer, len(bytes))
+	buffer.Write(bytes)
+	_, err = proto.readRequest(&buffer)
+	if err != nil {
+		t.Error(err)
+	}
 }
 
 func TestInvalidMessageSize(t *testing.T) {
+	var proto Protocol
 	var buffer bytes.Buffer
-	writeLength(&buffer, 2*1024*1024)
-	_, err := readRequest(&buffer)
-	if err == nil {
-		t.Error()
+	proto.writeInt(&buffer, magicNumber)
+	proto.writeInt(&buffer, 0) // checksum
+	buffer.WriteByte(0)
+	_, err := proto.readRequest(&buffer)
+	if err == nil || err != ErrMessageSize {
+		t.Error(err)
 	}
-	if err.Error() != "Invalid message size, too large" {
-		t.Error("Wrong error")
+	buffer.Reset()
+	proto.writeInt(&buffer, magicNumber)
+	proto.writeInt(&buffer, 0) // checksum
+	proto.writeInt(&buffer, 2*1024*1024)
+	_, err = proto.readRequest(&buffer)
+	if err == nil || err != ErrMessageSize {
+		t.Error(err)
 	}
 }
 
 func TestMessageTooShort(t *testing.T) {
+	var proto Protocol
 	var buffer bytes.Buffer
-	writeLength(&buffer, 20)
-	_, err := readRequest(&buffer)
-	if err == nil {
-		t.Error()
+	proto.writeInt(&buffer, magicNumber)
+	proto.writeInt(&buffer, 0)  // checksum
+	proto.writeInt(&buffer, 20) // size
+	_, err := proto.readRequest(&buffer)
+	if err == nil || err != io.EOF {
+		t.Error(err)
 	}
 
 	buffer.Reset()
-	writeLength(&buffer, 20)
+	proto.writeInt(&buffer, magicNumber)
+	proto.writeInt(&buffer, 0)  // checksum
+	proto.writeInt(&buffer, 20) // size
 	buffer.WriteString("data")
-	_, err = readRequest(&buffer)
-	if err == nil {
-		t.Error()
+	_, err = proto.readRequest(&buffer)
+	if err == nil || err != io.EOF {
+		t.Error(err)
 	}
 }
 
 func TestMessageTypes(t *testing.T) {
+	var proto Protocol
 	var buffer bytes.Buffer
 
 	var i MessageType
 	for i = 0; i < lastMessageType; i++ {
+		var bytes [1]byte
+		bytes[0] = byte(i)
 		buffer.Reset()
-		writeLength(&buffer, 1)
-		buffer.WriteByte(byte(i))
-		req, err := readRequest(&buffer)
-		if err != nil && err.Error() == "Invalid message type" {
-			t.Error()
+		proto.writeInt(&buffer, magicNumber)
+		proto.writeInt(&buffer, int(crc32.ChecksumIEEE(bytes[0:])))
+		proto.writeInt(&buffer, 1) // size
+		buffer.Write(bytes[0:])
+		req, err := proto.readRequest(&buffer)
+		if req == nil {
+			t.Error(err)
 		}
 		if req.Type() != i {
 			t.Error("Type mismatch", i, req.Type())
@@ -75,39 +127,40 @@ func TestMessageTypes(t *testing.T) {
 	}
 
 	for i = lastMessageType; i < math.MaxUint8; i++ {
+		var bytes [1]byte
+		bytes[0] = byte(i)
 		buffer.Reset()
-		writeLength(&buffer, 1)
-		buffer.WriteByte(byte(i))
-		_, err := readRequest(&buffer)
-		if err == nil || err.Error() != "Invalid message type" {
+		proto.writeInt(&buffer, magicNumber)
+		proto.writeInt(&buffer, int(crc32.ChecksumIEEE(bytes[0:])))
+		proto.writeInt(&buffer, 1) // size
+		buffer.Write(bytes[0:])
+		_, err := proto.readRequest(&buffer)
+		if err == nil || err != ErrMessageType {
 			t.Error(err)
 		}
 	}
 }
 
-func readSize(buffer *bytes.Buffer) int {
-	bytes := buffer.Next(4)
-	return int(bytes[0]<<24 | bytes[1]<<16 | bytes[2]<<8 | bytes[3])
-}
-
 func TestWriteSnapshot(t *testing.T) {
+	var proto Protocol
 	var output bytes.Buffer
-	err := writeSnapshot(&output, nil)
+	err := proto.writeSnapshot(&output, nil)
 	if err != nil {
 		t.Error(err)
 	}
-	if output.Len() != 4 || readSize(&output) != 0 {
-		t.Error()
+	size, err := proto.readInt(&output)
+	if size != 0 || err != nil {
+		t.Error(size, err)
 	}
 	output.Reset()
 	slice := make([]ServiceDefinition, 1)
 	slice[0].Host = "host"
 	slice[0].Port = 8080
-	err = writeSnapshot(&output, slice)
+	err = proto.writeSnapshot(&output, slice)
 	if err != nil {
 		t.Error()
 	}
-	readSize(&output)
+	proto.readInt(&output)
 	dec := json.NewDecoder(&output)
 	var snapshot []ServiceDefinition
 	err = dec.Decode(&snapshot)
