@@ -67,11 +67,14 @@ func (p *Protocol) readInt(in io.Reader) (int, error) {
 
 // Write the integer value as a sequence of 4 big-endian bytes to out.
 func (p *Protocol) writeInt(out io.Writer, i int) error {
-	p.buffer[0] = byte(i >> 24)
-	p.buffer[1] = byte(i >> 16)
-	p.buffer[2] = byte(i >> 8)
-	p.buffer[3] = byte(i)
-	_, err := out.Write(p.buffer[0:4])
+	// Not using the internal scratch space as we could be using it to write a
+	// snapshot.
+	var buffer [4]byte
+	buffer[0] = byte(i >> 24)
+	buffer[1] = byte(i >> 16)
+	buffer[2] = byte(i >> 8)
+	buffer[3] = byte(i)
+	_, err := out.Write(buffer[0:])
 	return err
 }
 
@@ -150,27 +153,37 @@ func (p *Protocol) readRequest(in io.Reader) (*request, error) {
 	return &req, err
 }
 
-func (p *Protocol) writeSnapshot(
-	out io.Writer, snapshot []ServiceDefinition) error {
+func (p *Protocol) writeJson(out io.Writer, obj interface{}) error {
 	buffer := bytes.NewBuffer(p.buffer[0:0])
-	if snapshot != nil {
+	if obj != nil {
 		enc := json.NewEncoder(buffer)
-		err := enc.Encode(snapshot)
+		err := enc.Encode(obj)
 		if err != nil {
 			return err
 		}
 	}
-	var length [4]byte
-	length[0] = byte(buffer.Len() >> 24)
-	length[1] = byte(buffer.Len() >> 16)
-	length[2] = byte(buffer.Len() >> 8)
-	length[3] = byte(buffer.Len())
-	_, err := out.Write(length[0:])
-	if err != nil {
+	return p.writeBytes(out, buffer.Bytes())
+}
+
+func (p *Protocol) writeBytes(out io.Writer, bytes []byte) error {
+	if err := p.writeInt(out, magicNumber); err != nil {
 		return err
 	}
-	if buffer.Len() != 0 {
-		_, err = out.Write(buffer.Bytes())
+	checksum := int(crc32.ChecksumIEEE(bytes))
+	if err := p.writeInt(out, checksum); err != nil {
+		return err
 	}
-	return err
+	if err := p.writeInt(out, len(bytes)); err != nil {
+		return err
+	}
+	if len(bytes) != 0 {
+		n, err := out.Write(bytes)
+		if err != nil {
+			return err
+		}
+		if n != len(bytes) {
+			return io.EOF
+		}
+	}
+	return nil
 }

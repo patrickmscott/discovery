@@ -144,9 +144,17 @@ func TestMessageTypes(t *testing.T) {
 func TestWriteSnapshot(t *testing.T) {
 	var proto Protocol
 	var output bytes.Buffer
-	err := proto.writeSnapshot(&output, nil)
+	err := proto.writeJson(&output, nil)
 	if err != nil {
 		t.Error(err)
+	}
+	magic, err := proto.readInt(&output)
+	if magic != magicNumber || err != nil {
+		t.Error(magic, err)
+	}
+	checksum, err := proto.readInt(&output)
+	if checksum != int(crc32.ChecksumIEEE(nil)) || err != nil {
+		t.Error(checksum, err)
 	}
 	size, err := proto.readInt(&output)
 	if size != 0 || err != nil {
@@ -156,16 +164,18 @@ func TestWriteSnapshot(t *testing.T) {
 	slice := make([]ServiceDefinition, 1)
 	slice[0].Host = "host"
 	slice[0].Port = 8080
-	err = proto.writeSnapshot(&output, slice)
+	err = proto.writeJson(&output, slice)
 	if err != nil {
 		t.Error()
 	}
-	proto.readInt(&output)
+	proto.readInt(&output) // magic
+	proto.readInt(&output) // checksum
+	proto.readInt(&output) // size
 	dec := json.NewDecoder(&output)
 	var snapshot []ServiceDefinition
 	err = dec.Decode(&snapshot)
 	if err != nil {
-		t.Error()
+		t.Error(err)
 	}
 	if len(snapshot) != 1 {
 		t.Error()

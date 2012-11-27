@@ -167,7 +167,7 @@ func (s *Server) handleConnection(connection net.Conn) {
 		case snapshotMessage:
 			msg := req.ToSnapshot()
 			result := s.Snapshot(msg.Group)
-			if err := proto.writeSnapshot(connection, result); err != nil {
+			if err := proto.writeJson(connection, result); err != nil {
 				break
 			}
 		case watchMessage:
