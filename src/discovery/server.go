@@ -20,7 +20,7 @@ func compareHostAndPort(a, b *JoinRequest) int {
 }
 
 func addEntry(list *list.List, entry *JoinRequest) {
-	entry = entry.Copy()
+	entry = entry.copy()
 	for iter := list.Front(); iter != nil; iter = iter.Next() {
 		e := iter.Value.(*JoinRequest)
 		res := compareHostAndPort(entry, e)
@@ -137,15 +137,6 @@ func (s *Server) Serve(port uint16) (err error) {
 		go s.handleConnection(connection)
 	}
 	return nil
-}
-
-func getIpAddress(addr net.Addr) string {
-	tcpAddr := addr.(*net.TCPAddr)
-	ip := tcpAddr.IP.To4().String()
-	if tcpAddr.IP.IsLoopback() {
-		ip = "127.0.0.1"
-	}
-	return ip
 }
 
 func (s *Server) handleConnection(connection net.Conn) {

@@ -7,7 +7,7 @@ import (
 
 type Client struct {
 	proto Protocol
-	conn net.Conn
+	conn  net.Conn
 }
 
 func (c *Client) Connect(host string, port uint16) error {

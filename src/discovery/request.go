@@ -30,7 +30,7 @@ func (r *SnapshotRequest) Type() RequestType  { return snapshotRequest }
 func (r *HeartbeatRequest) Type() RequestType { return heartbeatRequest }
 
 // Returns a shallow copy of the join request.
-func (join *JoinRequest) Copy() *JoinRequest {
+func (join *JoinRequest) copy() *JoinRequest {
 	return &JoinRequest{
 		Host:       join.Host,
 		Port:       join.Port,
