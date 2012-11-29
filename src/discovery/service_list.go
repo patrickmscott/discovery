@@ -1,7 +1,6 @@
 package discovery
 
 import (
-	"bytes"
 	"container/list"
 )
 
@@ -15,9 +14,9 @@ type serviceDefinition struct {
 type serviceList list.List
 
 func (a *serviceDefinition) compare(b *serviceDefinition) int {
-	res := bytes.Compare([]byte(a.group), []byte(b.group))
+	res := strcmp(a.group, b.group)
 	if res == 0 {
-		res = bytes.Compare([]byte(a.Host), []byte(b.Host))
+		res = strcmp(a.Host, b.Host)
 	}
 	if res == 0 {
 		res = int(a.Port) - int(b.Port)
@@ -81,7 +80,7 @@ type iterator struct {
 func (i *iterator) HasMore() bool {
 	for ; i.iter != nil; i.iter = i.iter.Next() {
 		def := i.iter.Value.(*serviceDefinition)
-		diff := bytes.Compare([]byte(def.group), []byte(i.group))
+		diff := strcmp(def.group, i.group)
 		if diff == 0 {
 			return true
 		} else if diff > 0 {

@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestMagicNumber(t *testing.T) {
+func TestProtocolReadRequestMagicNumber(t *testing.T) {
 	var proto Protocol
 	_, err := proto.readRequest(&bytes.Buffer{})
 	if err == nil {
@@ -31,7 +31,7 @@ func TestMagicNumber(t *testing.T) {
 	}
 }
 
-func TestChecksum(t *testing.T) {
+func TestProtocolReadRequestChecksum(t *testing.T) {
 	var proto Protocol
 	var buffer bytes.Buffer
 	proto.writeInt(&buffer, magicNumber)
@@ -62,7 +62,7 @@ func TestChecksum(t *testing.T) {
 	}
 }
 
-func TestInvalidRequestSize(t *testing.T) {
+func TestProtocolReadRequestSize(t *testing.T) {
 	var proto Protocol
 	var buffer bytes.Buffer
 	proto.writeInt(&buffer, magicNumber)
@@ -82,7 +82,7 @@ func TestInvalidRequestSize(t *testing.T) {
 	}
 }
 
-func TestRequestTooShort(t *testing.T) {
+func TestProtocolReadRequestEOF(t *testing.T) {
 	var proto Protocol
 	var buffer bytes.Buffer
 	proto.writeInt(&buffer, magicNumber)
@@ -104,7 +104,7 @@ func TestRequestTooShort(t *testing.T) {
 	}
 }
 
-func TestRequestTypes(t *testing.T) {
+func TestProtocolReadRequestType(t *testing.T) {
 	var proto Protocol
 	var buffer bytes.Buffer
 
@@ -141,7 +141,12 @@ func TestRequestTypes(t *testing.T) {
 	}
 }
 
-func TestWriteSnapshot(t *testing.T) {
+type jsonTest struct {
+	Name  string
+	Value int
+}
+
+func TestProtocolWriteJson(t *testing.T) {
 	var proto Protocol
 	var output bytes.Buffer
 	err := proto.writeJson(&output, nil)
@@ -161,9 +166,8 @@ func TestWriteSnapshot(t *testing.T) {
 		t.Error(size, err)
 	}
 	output.Reset()
-	slice := make([]ServiceDefinition, 1)
-	slice[0].Host = "host"
-	slice[0].Port = 8080
+	slice := make([]*jsonTest, 1)
+	slice[0] = &jsonTest{"name", 42}
 	err = proto.writeJson(&output, slice)
 	if err != nil {
 		t.Error()
@@ -172,15 +176,15 @@ func TestWriteSnapshot(t *testing.T) {
 	proto.readInt(&output) // checksum
 	proto.readInt(&output) // size
 	dec := json.NewDecoder(&output)
-	var snapshot []ServiceDefinition
-	err = dec.Decode(&snapshot)
+	var result []*jsonTest
+	err = dec.Decode(&result)
 	if err != nil {
 		t.Error(err)
 	}
-	if len(snapshot) != 1 {
+	if len(result) != 1 {
 		t.Error()
 	}
-	if snapshot[0].Host != "host" || snapshot[0].Port != 8080 {
+	if result[0].Name != "name" || result[0].Value != 42 {
 		t.Error()
 	}
 }

@@ -13,7 +13,7 @@ type connection struct {
 	ip       string
 }
 
-func (c *connection) join(req *JoinRequest) {
+func (c *connection) Join(req *JoinRequest) {
 	var service serviceDefinition
 	service.Host = req.Host
 	service.Port = req.Port
@@ -30,7 +30,7 @@ func (c *connection) join(req *JoinRequest) {
 	c.services.Add(&service)
 }
 
-func (c *connection) leave(req *LeaveRequest) {
+func (c *connection) Leave(req *LeaveRequest) {
 	var service serviceDefinition
 	service.Host = req.Host
 	service.Port = req.Port
@@ -60,7 +60,7 @@ func getIpAddress(addr net.Addr) string {
 
 // Handle incoming requests until either the client disconnects or there is an
 // error.
-func (c *connection) process(conn net.Conn) {
+func (c *connection) Process(conn net.Conn) {
 	var proto Protocol
 	c.ip = getIpAddress(conn.RemoteAddr())
 	log.Println("Processing connection from", c.ip)
@@ -73,17 +73,15 @@ func (c *connection) process(conn net.Conn) {
 
 		switch req.Type() {
 		case joinRequest:
-			c.join(req.(*JoinRequest))
+			c.Join(req.(*JoinRequest))
 		case leaveRequest:
-			c.leave(req.(*LeaveRequest))
+			c.Leave(req.(*LeaveRequest))
 		case snapshotRequest:
-			/*
-				req := req.(*SnapshotRequest)
-				result := c.server.snapshot(req.Group)
-				if err := proto.writeJson(conn, result); err != nil {
-					break
-				}
-			*/
+			req := req.(*SnapshotRequest)
+			result := c.server.Snapshot(req.Group)
+			if err := proto.writeJson(conn, result); err != nil {
+				break
+			}
 		case watchRequest:
 		}
 	}
