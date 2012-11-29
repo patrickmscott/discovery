@@ -71,3 +71,40 @@ func (l *serviceList) Get(index int) *serviceDefinition {
 }
 
 func (l *serviceList) Len() int { return (*list.List)(l).Len() }
+
+type iterator struct {
+	iter  *list.Element
+	group string
+}
+
+// Returns true if the iterator has more data.
+func (i *iterator) HasMore() bool {
+	for ; i.iter != nil; i.iter = i.iter.Next() {
+		def := i.iter.Value.(*serviceDefinition)
+		diff := bytes.Compare([]byte(def.group), []byte(i.group))
+		if diff == 0 {
+			return true
+		} else if diff > 0 {
+			i.iter = nil
+			break
+		}
+	}
+	return false
+}
+
+// Returns the next *serviceDefinition in the service group. Nil if this
+// iterator has no more data.
+func (i *iterator) Next() *serviceDefinition {
+	if !i.HasMore() {
+		return nil
+	}
+	def := i.iter.Value.(*serviceDefinition)
+	i.iter = i.iter.Next()
+	return def
+}
+
+// Create an interator over the serviceDefinitions in a service group. Never
+// returns nil.
+func (l *serviceList) Iterator(group string) *iterator {
+	return &iterator{(*list.List)(l).Front(), group}
+}

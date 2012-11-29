@@ -1,6 +1,7 @@
 package discovery
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -109,5 +110,45 @@ func TestServiceListGet(t *testing.T) {
 	list.Add(&serviceDefinition{Host: "host"})
 	if list.Get(1).Host != "host" {
 		t.Error("Wrong definition returned")
+	}
+}
+
+func TestServiceListIterator(t *testing.T) {
+	var list serviceList
+	list.Add(&serviceDefinition{"host1", 0, nil, "group1"})
+	list.Add(&serviceDefinition{"host2", 0, nil, "group1"})
+	list.Add(&serviceDefinition{"host1", 0, nil, "group2"})
+	list.Add(&serviceDefinition{"host2", 0, nil, "group2"})
+	list.Add(&serviceDefinition{"host3", 0, nil, "group2"})
+
+	iter := list.Iterator("group1")
+	i := 0
+	for iter.HasMore() {
+		def := iter.Next()
+		if def.Host != fmt.Sprintf("host%d", i+1) {
+			t.Error("group1 wrong entry", i, def)
+		}
+		i++
+	}
+	if i != 2 {
+		t.Error("Wrong number of entries in group1", i)
+	}
+
+	iter = list.Iterator("group2")
+	i = 0
+	for iter.HasMore() {
+		def := iter.Next()
+		if def.Host != fmt.Sprintf("host%d", i+1) {
+			t.Error("group2 wrong entry", i, def)
+		}
+		i++
+	}
+	if i != 3 {
+		t.Error("Wrong number of entries in group2", i)
+	}
+
+	if list.Iterator("group3").Next() != nil ||
+		list.Iterator("group3").HasMore() {
+		t.Error("group3 should not have entries")
 	}
 }
