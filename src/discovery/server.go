@@ -11,6 +11,7 @@ import (
 type Server struct {
 	mutex       sync.Mutex
 	connections list.List
+	services    serviceList
 }
 
 // Small default size to avoid allocating too much for small groups.
@@ -21,14 +22,8 @@ func (s *Server) Snapshot(group string) *list.List {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	var services list.List
-	for iter := s.connections.Front(); iter != nil; iter = iter.Next() {
-		conn := iter.Value.(*connection)
-		conn.mutex.Lock()
-		servicesIter := conn.services.Iterator(group)
-		for servicesIter.HasMore() {
-			services.PushBack(servicesIter.Next())
-		}
-		conn.mutex.Unlock()
+	for iter := s.services.Iterator(group); iter.HasMore(); {
+		services.PushBack(iter.Next())
 	}
 	return &services
 }

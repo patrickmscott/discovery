@@ -72,23 +72,29 @@ func (l *serviceList) Get(index int) *serviceDefinition {
 func (l *serviceList) Len() int { return (*list.List)(l).Len() }
 
 type iterator struct {
-	iter  *list.Element
-	group string
+	iter    *list.Element
+	group   string
+	hasMore bool // shortcut to avoid string comparisons
 }
 
 // Returns true if the iterator has more data.
 func (i *iterator) HasMore() bool {
+	if i.hasMore {
+		return true
+	}
+	i.hasMore = false
 	for ; i.iter != nil; i.iter = i.iter.Next() {
 		def := i.iter.Value.(*serviceDefinition)
 		diff := strcmp(def.group, i.group)
 		if diff == 0 {
-			return true
+			i.hasMore = true
+			break
 		} else if diff > 0 {
 			i.iter = nil
 			break
 		}
 	}
-	return false
+	return i.hasMore
 }
 
 // Returns the next *serviceDefinition in the service group. Nil if this
@@ -99,11 +105,12 @@ func (i *iterator) Next() *serviceDefinition {
 	}
 	def := i.iter.Value.(*serviceDefinition)
 	i.iter = i.iter.Next()
+	i.hasMore = false // more like unknown
 	return def
 }
 
 // Create an interator over the serviceDefinitions in a service group. Never
 // returns nil.
 func (l *serviceList) Iterator(group string) *iterator {
-	return &iterator{(*list.List)(l).Front(), group}
+	return &iterator{(*list.List)(l).Front(), group, false}
 }

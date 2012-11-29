@@ -8,19 +8,11 @@ func TestServerSnapshot(t *testing.T) {
 	var server Server
 	result := server.Snapshot("group")
 	if result.Len() != 0 {
-		t.Error("Empty connection list should return empty list")
-	}
-
-	var conn1, conn2 = newConnection(&server), newConnection(&server)
-	server.connections.PushBack(conn1)
-	server.connections.PushBack(conn2)
-	result = server.Snapshot("group")
-	if result.Len() != 0 {
 		t.Error("Empty services list should return empty list")
 	}
 
-	conn1.Join(&JoinRequest{Host: "host1", Group: "group1"})
-	conn2.Join(&JoinRequest{Host: "host2", Group: "group2"})
+	server.services.Add(&serviceDefinition{Host: "host1", group: "group1"})
+	server.services.Add(&serviceDefinition{Host: "host2", group: "group2"})
 
 	result = server.Snapshot("group")
 	if result.Len() != 0 {
@@ -48,14 +40,9 @@ func TestServerSnapshot(t *testing.T) {
 
 func BenchmarkSnapshot(b *testing.B) {
 	var server Server
-	var conn *connection = newConnection(&server)
-	server.connections.PushBack(conn)
-	var join JoinRequest
-	join.Host = "host"
-	join.Group = "group"
 	for i := 0; i < b.N; i++ {
-		join.Port = uint16(i)
-		conn.Join(&JoinRequest{Host: "host", Port: uint16(i), Group: "group"})
+		server.services.Add(
+			&serviceDefinition{Host: "host", Port: uint16(i), group: "group"})
 		if server.Snapshot("group").Len() != i+1 {
 			b.Error("Wrong snapshot size")
 		}
