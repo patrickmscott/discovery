@@ -85,5 +85,6 @@ func (c *connection) Process(conn net.Conn) {
 		case watchRequest:
 		}
 	}
+	log.Println("Closing connection from", c.ip)
 	conn.Close()
 }
