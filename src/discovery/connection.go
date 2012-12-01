@@ -19,15 +19,7 @@ func (c *connection) Join(req *JoinRequest) {
 	service.Port = req.Port
 	service.CustomData = req.CustomData
 	service.group = req.Group
-
-	// If the request did not include a host, use the connection ip.
-	if service.Host == "" {
-		service.Host = c.ip
-	}
-
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-	c.services.Add(&service)
+	c.server.eventChan <- &serviceEvent{join: true, service: &service}
 }
 
 func (c *connection) Leave(req *LeaveRequest) {
@@ -35,19 +27,7 @@ func (c *connection) Leave(req *LeaveRequest) {
 	service.Host = req.Host
 	service.Port = req.Port
 	service.group = req.Group
-
-	// If the request did not include a host, use the connection ip.
-	if service.Host == "" {
-		service.Host = c.ip
-	}
-
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-	c.services.Remove(&service)
-}
-
-func newConnection(server *Server) *connection {
-	return &connection{server: server}
+	c.server.eventChan <- &serviceEvent{join: false, service: &service}
 }
 
 func getIpAddress(addr net.Addr) string {

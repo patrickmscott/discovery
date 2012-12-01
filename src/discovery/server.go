@@ -7,35 +7,6 @@ import (
 	"net"
 )
 
-type event interface {
-	Run(*Server)
-}
-
-type connectionEvent struct {
-	event
-	conn net.Conn
-}
-
-func (e *connectionEvent) Run(s *Server) {
-	conn := newConnection(s)
-	s.connections.PushBack(conn)
-	go conn.Process(e.conn)
-}
-
-type serviceEvent struct {
-	event
-	join    bool
-	service *serviceDefinition
-}
-
-func (e *serviceEvent) Run(s *Server) {
-	if e.join {
-		s.services.Add(e.service)
-	} else {
-		s.services.Remove(e.service)
-	}
-}
-
 type Server struct {
 	connections list.List
 	services    serviceList
@@ -67,7 +38,7 @@ func (s *Server) Serve(port uint16) (err error) {
 		log.Println("Event loop start...")
 		for {
 			e := <-s.eventChan
-			e.Run(s)
+			e.Dispatch(s)
 		}
 	}()
 

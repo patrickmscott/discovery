@@ -2,6 +2,7 @@ package discovery
 
 import (
 	"container/list"
+	"fmt"
 )
 
 type serviceDefinition struct {
@@ -22,6 +23,10 @@ func (a *serviceDefinition) compare(b *serviceDefinition) int {
 		res = int(a.Port) - int(b.Port)
 	}
 	return res
+}
+
+func (s *serviceDefinition) String() string {
+	return fmt.Sprintf("'%s' %s:%d %v", s.group, s.Host, s.Port, s.CustomData)
 }
 
 func (l *serviceList) Add(service *serviceDefinition) {
