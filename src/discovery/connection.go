@@ -3,19 +3,24 @@ package discovery
 import (
 	"log"
 	"net"
-	"sync"
 )
 
 type connection struct {
 	server   *Server
-	mutex    sync.Mutex
 	services serviceList
 	ip       string
 }
 
+func (c *connection) serviceHost(host string) string {
+	if host == "" {
+		return c.ip
+	}
+	return host
+}
+
 func (c *connection) Join(req *JoinRequest) {
 	var service serviceDefinition
-	service.Host = req.Host
+	service.Host = c.serviceHost(req.Host)
 	service.Port = req.Port
 	service.CustomData = req.CustomData
 	service.group = req.Group
@@ -24,7 +29,7 @@ func (c *connection) Join(req *JoinRequest) {
 
 func (c *connection) Leave(req *LeaveRequest) {
 	var service serviceDefinition
-	service.Host = req.Host
+	service.Host = c.serviceHost(req.Host)
 	service.Port = req.Port
 	service.group = req.Group
 	c.server.eventChan <- &serviceEvent{join: false, service: &service}

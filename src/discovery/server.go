@@ -33,7 +33,7 @@ func (s *Server) Serve(port uint16) (err error) {
 		return
 	}
 
-	s.eventChan = make(chan event)
+	s.eventChan = make(chan event, 1024)
 	go func() {
 		log.Println("Event loop start...")
 		for {
