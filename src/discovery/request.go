@@ -29,15 +29,6 @@ func (r *WatchRequest) Type() RequestType     { return watchRequest }
 func (r *SnapshotRequest) Type() RequestType  { return snapshotRequest }
 func (r *HeartbeatRequest) Type() RequestType { return heartbeatRequest }
 
-// Returns a shallow copy of the join request.
-func (join *JoinRequest) copy() *JoinRequest {
-	return &JoinRequest{
-		Host:       join.Host,
-		Port:       join.Port,
-		Group:      join.Group,
-		CustomData: join.CustomData}
-}
-
 type LeaveRequest struct {
 	Request
 	Host  string
