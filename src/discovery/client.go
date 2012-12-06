@@ -5,6 +5,8 @@ import (
 	"net"
 )
 
+const DefaultPort uint16 = 3472 /* DISC */
+
 type Client struct {
 	proto Protocol
 	conn  net.Conn

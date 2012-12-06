@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-var port = flag.Int("port", 9000, "Port to listen on.")
+var port = flag.Int("port", int(discovery.DefaultPort), "Port to listen on.")
 
 func main() {
 	flag.Parse()
