@@ -79,7 +79,7 @@ func (p *Protocol) readRequest(in io.Reader) (Request, error) {
 	for {
 		n, err := in.Read(buffer[offset:])
 		offset += n
-		if err == io.EOF {
+		if err == io.EOF || offset == size {
 			break
 		}
 		if err != nil {

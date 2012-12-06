@@ -36,7 +36,7 @@ func TestServiceDefinitionCompare(t *testing.T) {
 
 func TestServiceListAdd(t *testing.T) {
 	var list serviceList
-	service := &serviceDefinition{"host", 8080, nil, "group"}
+	service := &serviceDefinition{Host: "host"}
 
 	if list.Len() != 0 {
 		t.Error("Empty list should have 0 length")
@@ -47,7 +47,7 @@ func TestServiceListAdd(t *testing.T) {
 		t.Error("Single add failed")
 	}
 
-	service = &serviceDefinition{"host1", 8080, nil, "group"}
+	service = &serviceDefinition{Host: "host1"}
 	list.Add(service)
 	if list.Len() != 2 {
 		t.Error("Multiple add failed")
@@ -59,18 +59,16 @@ func TestServiceListAdd(t *testing.T) {
 	}
 
 	service = list.Get(0)
-	if service.Host != "host" || service.Port != 8080 ||
-		service.group != "group" || service.CustomData != nil {
+	if service.Host != "host" {
 		t.Error("First entry invalid", service)
 	}
 
 	service = list.Get(1)
-	if service.Host != "host1" || service.Port != 8080 ||
-		service.group != "group" || service.CustomData != nil {
+	if service.Host != "host1" {
 		t.Error("Second entry invalid", service)
 	}
 
-	service = &serviceDefinition{"host", 8080, make([]byte, 1), "group"}
+	service = &serviceDefinition{Host: "host", CustomData: make([]byte, 1)}
 	list.Add(service)
 	service = list.Get(0)
 	if service.CustomData == nil {
@@ -115,11 +113,11 @@ func TestServiceListGet(t *testing.T) {
 
 func TestServiceListIterator(t *testing.T) {
 	var list serviceList
-	list.Add(&serviceDefinition{"host1", 0, nil, "group1"})
-	list.Add(&serviceDefinition{"host2", 0, nil, "group1"})
-	list.Add(&serviceDefinition{"host1", 0, nil, "group2"})
-	list.Add(&serviceDefinition{"host2", 0, nil, "group2"})
-	list.Add(&serviceDefinition{"host3", 0, nil, "group2"})
+	list.Add(&serviceDefinition{Host: "host1", group: "group1"})
+	list.Add(&serviceDefinition{Host: "host2", group: "group1"})
+	list.Add(&serviceDefinition{Host: "host1", group: "group2"})
+	list.Add(&serviceDefinition{Host: "host2", group: "group2"})
+	list.Add(&serviceDefinition{Host: "host3", group: "group2"})
 
 	iter := list.Iterator("group1")
 	i := 0
@@ -150,5 +148,40 @@ func TestServiceListIterator(t *testing.T) {
 	if list.Iterator("group3").Next() != nil ||
 		list.Iterator("group3").HasMore() {
 		t.Error("group3 should not have entries")
+	}
+}
+
+func TestServiceListRemoveAll(t *testing.T) {
+	var list serviceList
+	list.Add(&serviceDefinition{Host: "host1", connId: 0})
+	list.Add(&serviceDefinition{Host: "host2", connId: 0})
+	list.Add(&serviceDefinition{Host: "host3", connId: 1})
+	list.Add(&serviceDefinition{Host: "host5", connId: 1})
+	list.Add(&serviceDefinition{Host: "host4", connId: 2})
+	list.Add(&serviceDefinition{Host: "host6", connId: 2})
+
+	if list.Len() != 6 {
+		t.Error("Wrong number of services")
+	}
+	list.RemoveAll(-1)
+	if list.Len() != 6 {
+		t.Error("Invalid connection id removed entries")
+	}
+
+	list.RemoveAll(0)
+	if list.Len() != 4 {
+		t.Error("Removing valid connection failed")
+	}
+	if list.Get(0).Host != "host3" || list.Get(1).Host != "host4" ||
+		list.Get(2).Host != "host5" || list.Get(3).Host != "host6" {
+		t.Error("Wrong entries after removing connId 0")
+	}
+
+	list.RemoveAll(2)
+	if list.Len() != 2 {
+		t.Error("Removing connId 2 failed")
+	}
+	if list.Get(0).Host != "host3" || list.Get(1).Host != "host5" {
+		t.Error("Wrong entries after removing connId 2")
 	}
 }

@@ -10,6 +10,7 @@ type serviceDefinition struct {
 	Port       uint16 `json:"port"`
 	CustomData []byte `json:"customData,omitempty"`
 	group      string
+	connId     int32
 }
 
 type serviceList list.List
@@ -57,6 +58,18 @@ func (l *serviceList) Remove(service *serviceDefinition) {
 			list.Remove(iter)
 		}
 		break
+	}
+}
+
+func (l *serviceList) RemoveAll(connId int32) {
+	list := (*list.List)(l)
+	for iter := list.Front(); iter != nil; {
+		e := iter.Value.(*serviceDefinition)
+		next := iter.Next()
+		if e.connId == connId {
+			list.Remove(iter)
+		}
+		iter = next
 	}
 }
 

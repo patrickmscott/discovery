@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"sync/atomic"
 )
 
 type Server struct {
 	connections list.List
 	services    serviceList
-	eventChan   chan event
+	eventChan   chan func()
+	nextConnId  int32
 }
 
 // Small default size to avoid allocating too much for small groups.
@@ -33,12 +35,11 @@ func (s *Server) Serve(port uint16) (err error) {
 		return
 	}
 
-	s.eventChan = make(chan event, 1024)
+	s.eventChan = make(chan func(), 1024)
 	go func() {
 		log.Println("Event loop start...")
 		for {
-			e := <-s.eventChan
-			e.Dispatch(s)
+			(<-s.eventChan)()
 		}
 	}()
 
@@ -48,7 +49,11 @@ func (s *Server) Serve(port uint16) (err error) {
 			log.Println("Error accepting connection:", err)
 			continue
 		}
-		s.eventChan <- &connectionEvent{conn: conn}
+		s.eventChan <- func() {
+			c := &connection{server: s, id: atomic.AddInt32(&s.nextConnId, 1)}
+			s.connections.PushBack(c)
+			go c.Process(conn)
+		}
 	}
 	return nil
 }

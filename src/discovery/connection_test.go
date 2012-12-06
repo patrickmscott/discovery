@@ -6,12 +6,12 @@ import (
 
 func TestConnectionJoin(t *testing.T) {
 	conn := &connection{server: &Server{}}
-	conn.server.eventChan = make(chan event, 2)
+	conn.server.eventChan = make(chan func(), 2)
 
 	conn.Join(&JoinRequest{Host: "host"})
 	conn.Join(&JoinRequest{Host: "host1"})
 
-	(<-conn.server.eventChan).Dispatch(conn.server)
+	(<-conn.server.eventChan)()
 	if conn.server.services.Len() != 1 {
 		t.Error("Join request failed to add service")
 	}
@@ -20,7 +20,7 @@ func TestConnectionJoin(t *testing.T) {
 		t.Error("First service incorrect", service)
 	}
 
-	(<-conn.server.eventChan).Dispatch(conn.server)
+	(<-conn.server.eventChan)()
 	if conn.server.services.Len() != 2 {
 		t.Error("Second join request failed to add service")
 	}
@@ -32,15 +32,15 @@ func TestConnectionJoin(t *testing.T) {
 
 func TestConnectionLeave(t *testing.T) {
 	conn := &connection{server: &Server{}}
-	conn.server.eventChan = make(chan event, 3)
+	conn.server.eventChan = make(chan func(), 3)
 
 	conn.Join(&JoinRequest{Host: "host"})
 	conn.Join(&JoinRequest{Host: "host1"})
 	conn.Leave(&LeaveRequest{Host: "host"})
 
-	(<-conn.server.eventChan).Dispatch(conn.server)
-	(<-conn.server.eventChan).Dispatch(conn.server)
-	(<-conn.server.eventChan).Dispatch(conn.server)
+	(<-conn.server.eventChan)()
+	(<-conn.server.eventChan)()
+	(<-conn.server.eventChan)()
 
 	if conn.server.services.Len() != 1 {
 		t.Error("Wrong number of services")
@@ -51,7 +51,7 @@ func TestConnectionLeave(t *testing.T) {
 	}
 
 	conn.Leave(&LeaveRequest{Group: "group"})
-	(<-conn.server.eventChan).Dispatch(conn.server)
+	(<-conn.server.eventChan)()
 
 	if conn.server.services.Len() != 1 {
 		t.Error("Wrong number of services after invalid leave")

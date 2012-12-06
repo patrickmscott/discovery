@@ -6,9 +6,9 @@ import (
 )
 
 type connection struct {
-	server   *Server
-	services serviceList
-	ip       string
+	server *Server
+	ip     string
+	id     int32
 }
 
 func (c *connection) serviceHost(host string) string {
@@ -24,7 +24,11 @@ func (c *connection) Join(req *JoinRequest) {
 	service.Port = req.Port
 	service.CustomData = req.CustomData
 	service.group = req.Group
-	c.server.eventChan <- &serviceEvent{join: true, service: &service}
+	service.connId = c.id
+	c.server.eventChan <- func() {
+		log.Println("Join: ", service)
+		c.server.services.Add(&service)
+	}
 }
 
 func (c *connection) Leave(req *LeaveRequest) {
@@ -32,7 +36,11 @@ func (c *connection) Leave(req *LeaveRequest) {
 	service.Host = c.serviceHost(req.Host)
 	service.Port = req.Port
 	service.group = req.Group
-	c.server.eventChan <- &serviceEvent{join: false, service: &service}
+	// Only need Host/Port/group tuple for Remove.
+	c.server.eventChan <- func() {
+		log.Println("Leave: ", service)
+		c.server.services.Remove(&service)
+	}
 }
 
 func getIpAddress(addr net.Addr) string {
@@ -71,5 +79,9 @@ func (c *connection) Process(conn net.Conn) {
 		}
 	}
 	log.Println("Closing connection from", c.ip)
+	c.server.eventChan <- func() {
+		log.Printf("Removing all services for conn #%d\n", c.id)
+		c.server.services.RemoveAll(c.id)
+	}
 	conn.Close()
 }
