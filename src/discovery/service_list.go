@@ -27,10 +27,13 @@ func (a *serviceDefinition) compare(b *serviceDefinition) int {
 }
 
 func (s *serviceDefinition) String() string {
-	return fmt.Sprintf("'%s' %s:%d %v", s.group, s.Host, s.Port, s.CustomData)
+	return fmt.Sprintf("'%s' %s:%d %v conn#%d",
+		s.group, s.Host, s.Port, s.CustomData, s.connId)
 }
 
-func (l *serviceList) Add(service *serviceDefinition) {
+// Add a new service definition to the list. If the definition is added or
+// updated, return true.
+func (l *serviceList) Add(service *serviceDefinition) bool {
 	list := (*list.List)(l)
 	for iter := list.Front(); iter != nil; iter = iter.Next() {
 		e := iter.Value.(*serviceDefinition)
@@ -39,26 +42,36 @@ func (l *serviceList) Add(service *serviceDefinition) {
 			continue
 		} else if res < 0 {
 			list.InsertBefore(service, iter)
-		} else {
+			return true
+		} else if e.connId == service.connId {
+			// Replace the definition if it is from the same connection.
 			iter.Value = service
+			return true
 		}
-		return
+		// Equal entries but from a different connection.
+		return false
 	}
 	list.PushBack(service)
+	return true
 }
 
-func (l *serviceList) Remove(service *serviceDefinition) {
+// Remove a service definition from the list. If a service has been removed,
+// return true. Different connections cannot remove services they did not add.
+func (l *serviceList) Remove(service *serviceDefinition) bool {
 	list := (*list.List)(l)
 	for iter := list.Front(); iter != nil; iter = iter.Next() {
 		e := iter.Value.(*serviceDefinition)
 		res := service.compare(e)
 		if res < 0 {
 			continue
-		} else if res == 0 {
+		} else if res == 0 && e.connId == service.connId {
 			list.Remove(iter)
+			return true
 		}
+		// Did not find the service.
 		break
 	}
+	return false
 }
 
 func (l *serviceList) RemoveAll(connId int32) {

@@ -42,20 +42,18 @@ func TestServiceListAdd(t *testing.T) {
 		t.Error("Empty list should have 0 length")
 	}
 
-	list.Add(service)
-	if list.Len() != 1 {
+	if !list.Add(service) || list.Len() != 1 {
 		t.Error("Single add failed")
 	}
 
 	service = &serviceDefinition{Host: "host1"}
-	list.Add(service)
-	if list.Len() != 2 {
+	if !list.Add(service) || list.Len() != 2 {
 		t.Error("Multiple add failed")
 	}
 
-	list.Add(service)
-	if list.Len() != 2 {
-		t.Error("Duplicate add failed")
+	// Replaces CustomData.
+	if !list.Add(service) || list.Len() != 2 {
+		t.Error("Duplicate add failed", list.Len())
 	}
 
 	service = list.Get(0)
@@ -69,25 +67,31 @@ func TestServiceListAdd(t *testing.T) {
 	}
 
 	service = &serviceDefinition{Host: "host", CustomData: make([]byte, 1)}
-	list.Add(service)
-	service = list.Get(0)
-	if service.CustomData == nil {
+	if !list.Add(service) || list.Get(0).CustomData == nil {
 		t.Error("Data replacement failed")
+	}
+
+	if list.Add(&serviceDefinition{Host: "host", connId: 2}) {
+		t.Error("Cannot replace different connection data")
 	}
 }
 
 func TestServiceListRemove(t *testing.T) {
 	var list serviceList
 	list.Add(&serviceDefinition{})
-	list.Remove(&serviceDefinition{})
-	if list.Len() != 0 {
+	if !list.Remove(&serviceDefinition{}) || list.Len() != 0 {
 		t.Error("Empty definition failed")
 	}
 
 	list.Add(&serviceDefinition{Host: "host"})
-	list.Remove(&serviceDefinition{Host: "host", group: "group"})
+	if list.Remove(&serviceDefinition{Host: "host", group: "group"}) {
+		t.Error("Removing unknown service failed")
+	}
 	if list.Len() != 1 {
 		t.Error("Mismatched remove failed")
+	}
+	if list.Remove(&serviceDefinition{Host: "host", connId: 1}) {
+		t.Error("Removing from a different connection should fail")
 	}
 }
 

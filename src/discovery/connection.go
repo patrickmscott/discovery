@@ -18,6 +18,12 @@ func (c *connection) serviceHost(host string) string {
 	return host
 }
 
+func (c *connection) SendLeave(service *serviceDefinition) {
+}
+
+func (c *connection) SendJoin(service *serviceDefinition) {
+}
+
 func (c *connection) Join(req *JoinRequest) {
 	var service serviceDefinition
 	service.Host = c.serviceHost(req.Host)
@@ -25,10 +31,7 @@ func (c *connection) Join(req *JoinRequest) {
 	service.CustomData = req.CustomData
 	service.group = req.Group
 	service.connId = c.id
-	c.server.eventChan <- func() {
-		log.Println("Join: ", service)
-		c.server.services.Add(&service)
-	}
+	c.server.eventChan <- func() { c.server.join(&service) }
 }
 
 func (c *connection) Leave(req *LeaveRequest) {
@@ -36,11 +39,8 @@ func (c *connection) Leave(req *LeaveRequest) {
 	service.Host = c.serviceHost(req.Host)
 	service.Port = req.Port
 	service.group = req.Group
-	// Only need Host/Port/group tuple for Remove.
-	c.server.eventChan <- func() {
-		log.Println("Leave: ", service)
-		c.server.services.Remove(&service)
-	}
+	service.connId = c.id
+	c.server.eventChan <- func() { c.server.leave(&service) }
 }
 
 func getIpAddress(addr net.Addr) string {

@@ -13,6 +13,7 @@ type Server struct {
 	services    serviceList
 	eventChan   chan func()
 	nextConnId  int32
+	watchers    map[string](map[*connection]bool)
 }
 
 // Small default size to avoid allocating too much for small groups.
@@ -25,6 +26,38 @@ func (s *Server) Snapshot(group string) *list.List {
 		services.PushBack(iter.Next())
 	}
 	return &services
+}
+
+func (s *Server) join(service *serviceDefinition) {
+	log.Println("Join: ", service)
+	if !s.services.Add(service) {
+		return
+	}
+	connections, ok := s.watchers[service.group]
+	if !ok {
+		return
+	}
+	for conn := range connections {
+		conn.SendJoin(service)
+	}
+}
+
+func (s *Server) leave(service *serviceDefinition) {
+	log.Println("Leave: ", service)
+	if !s.services.Remove(service) {
+		return
+	}
+	connections, ok := s.watchers[service.group]
+	if !ok {
+		return
+	}
+	for conn := range connections {
+		conn.SendLeave(service)
+	}
+}
+
+func (s *Server) watch(group string, conn *connection) {
+	s.watchers[group][conn] = true
 }
 
 // Listen for connections on the given port.
