@@ -104,8 +104,8 @@ func (l *serviceList) Len() int { return (*list.List)(l).Len() }
 
 type iterator struct {
 	iter    *list.Element
-	group   string
-	hasMore bool // shortcut to avoid string comparisons
+	cmp     func(service *serviceDefinition) int
+	hasMore bool // shortcut to avoid calling cmp
 }
 
 // Returns true if the iterator has more data.
@@ -115,8 +115,7 @@ func (i *iterator) HasMore() bool {
 	}
 	i.hasMore = false
 	for ; i.iter != nil; i.iter = i.iter.Next() {
-		def := i.iter.Value.(*serviceDefinition)
-		diff := strcmp(def.group, i.group)
+		diff := i.cmp(i.iter.Value.(*serviceDefinition))
 		if diff == 0 {
 			i.hasMore = true
 			break
@@ -142,6 +141,23 @@ func (i *iterator) Next() *serviceDefinition {
 
 // Create an interator over the serviceDefinitions in a service group. Never
 // returns nil.
-func (l *serviceList) Iterator(group string) *iterator {
-	return &iterator{(*list.List)(l).Front(), group, false}
+func (l *serviceList) GroupIterator(group string) *iterator {
+	return &iterator{
+		(*list.List)(l).Front(),
+		func(service *serviceDefinition) int {
+			return strcmp(service.group, group)
+		},
+		false}
+}
+
+func (l *serviceList) ConnIterator(id int32) *iterator {
+	return &iterator{
+		(*list.List)(l).Front(),
+		func(service *serviceDefinition) int {
+			if service.connId == id {
+				return 0
+			}
+			return -1
+		},
+		false}
 }

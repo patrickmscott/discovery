@@ -79,9 +79,6 @@ func (c *connection) Process(conn net.Conn) {
 		}
 	}
 	log.Println("Closing connection from", c.ip)
-	c.server.eventChan <- func() {
-		log.Printf("Removing all services for conn #%d\n", c.id)
-		c.server.services.RemoveAll(c.id)
-	}
+	c.server.eventChan <- func() { c.server.removeAll(c) }
 	conn.Close()
 }

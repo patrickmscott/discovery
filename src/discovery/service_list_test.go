@@ -115,7 +115,7 @@ func TestServiceListGet(t *testing.T) {
 	}
 }
 
-func TestServiceListIterator(t *testing.T) {
+func TestServiceListGroupIterator(t *testing.T) {
 	var list serviceList
 	list.Add(&serviceDefinition{Host: "host1", group: "group1"})
 	list.Add(&serviceDefinition{Host: "host2", group: "group1"})
@@ -123,7 +123,7 @@ func TestServiceListIterator(t *testing.T) {
 	list.Add(&serviceDefinition{Host: "host2", group: "group2"})
 	list.Add(&serviceDefinition{Host: "host3", group: "group2"})
 
-	iter := list.Iterator("group1")
+	iter := list.GroupIterator("group1")
 	i := 0
 	for iter.HasMore() {
 		def := iter.Next()
@@ -136,7 +136,7 @@ func TestServiceListIterator(t *testing.T) {
 		t.Error("Wrong number of entries in group1", i)
 	}
 
-	iter = list.Iterator("group2")
+	iter = list.GroupIterator("group2")
 	i = 0
 	for iter.HasMore() {
 		def := iter.Next()
@@ -149,9 +149,47 @@ func TestServiceListIterator(t *testing.T) {
 		t.Error("Wrong number of entries in group2", i)
 	}
 
-	if list.Iterator("group3").Next() != nil ||
-		list.Iterator("group3").HasMore() {
+	if list.GroupIterator("group3").Next() != nil ||
+		list.GroupIterator("group3").HasMore() {
 		t.Error("group3 should not have entries")
+	}
+}
+
+func TestServiceListConnIterator(t *testing.T) {
+	var list serviceList
+	list.Add(&serviceDefinition{Host: "h0", connId: 0})
+	list.Add(&serviceDefinition{Host: "h1", connId: 1})
+	list.Add(&serviceDefinition{Host: "h2", connId: 2})
+	list.Add(&serviceDefinition{Host: "h4", connId: 0})
+	list.Add(&serviceDefinition{Host: "h5", connId: 1})
+	list.Add(&serviceDefinition{Host: "h6", connId: 2})
+
+	var i int32
+	for i = 0; i < 3; i++ {
+		iter := list.ConnIterator(i)
+		if !iter.HasMore() {
+			t.Error("Expected connection to have a valid iterator", i)
+		}
+		service := iter.Next()
+		host := fmt.Sprintf("h%d", i)
+		if service.Host != host || service.connId != i {
+			t.Error("Wrong first entry in iterator", i, service)
+		}
+		if !iter.HasMore() {
+			t.Error("Expected connection to have more entries", i)
+		}
+		service = iter.Next()
+		host = fmt.Sprintf("h%d", i+4)
+		if service.Host != host || service.connId != i {
+			t.Error("Wrong second entry in iterator", i, service)
+		}
+		if iter.HasMore() {
+			t.Error("Too many entries in iterator", i)
+		}
+	}
+
+	if list.ConnIterator(3).HasMore() {
+		t.Error("Invalid connection has a valid iterator")
 	}
 }
 

@@ -22,7 +22,7 @@ const defaultSnapshotSize = 32
 func (s *Server) Snapshot(group string) *list.List {
 	log.Printf("Snapshot: '%s'\n", group)
 	var services list.List
-	for iter := s.services.Iterator(group); iter.HasMore(); {
+	for iter := s.services.GroupIterator(group); iter.HasMore(); {
 		services.PushBack(iter.Next())
 	}
 	return &services
@@ -53,6 +53,12 @@ func (s *Server) leave(service *serviceDefinition) {
 	}
 	for conn := range connections {
 		conn.SendLeave(service)
+	}
+}
+
+func (s *Server) removeAll(conn *connection) {
+	for iter := s.services.ConnIterator(conn.id); iter.HasMore(); {
+		s.leave(iter.Next())
 	}
 }
 
