@@ -49,5 +49,22 @@ func (d *Discovery) Leave(service *ServiceDef, v *Void) error {
 	return nil
 }
 
+func (d *Discovery) Snapshot(group string, snapshot *[]*ServiceDef) error {
+	d.server.eventChan <- func() {
+		services := d.server.snapshot(group)
+		*snapshot = make([]*ServiceDef, services.Len())
+		i := 0
+		for iter := services.Front(); iter != nil; iter = iter.Next() {
+			(*snapshot)[i] = iter.Value.(*ServiceDef)
+			i++
+		}
+		d.resultChan <- true
+	}
+	if !<-d.resultChan {
+		return errors.New("Snapshot failed")
+	}
+	return nil
+}
+
 func (d *Discovery) sendJoin(service *ServiceDef)  {}
 func (d *Discovery) sendLeave(service *ServiceDef) {}

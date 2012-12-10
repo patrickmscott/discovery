@@ -22,7 +22,7 @@ type Server struct {
 // Small default size to avoid allocating too much for small groups.
 const defaultSnapshotSize = 32
 
-func (s *Server) Snapshot(group string) *list.List {
+func (s *Server) snapshot(group string) *list.List {
 	log.Printf("Snapshot: '%s'\n", group)
 	var services list.List
 	iter := s.services.Iterator()

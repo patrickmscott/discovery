@@ -42,6 +42,20 @@ func main() {
 		}
 		err = client.Join(&discovery.ServiceDef{
 			Group: args[1], Host: args[2], Port: uint16(port)})
+	case "snapshot":
+		if len(args) < 2 {
+			log.Println("client snapshot requires <group>")
+			return
+		}
+		snapshot, err := client.Snapshot(args[1])
+		if err != nil {
+			log.Println("Error:", err)
+			return
+		}
+		for _, def := range snapshot {
+			log.Println(def)
+		}
+		return
 	default:
 	}
 	if err != nil {

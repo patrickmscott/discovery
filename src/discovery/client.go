@@ -25,3 +25,9 @@ func (c *Client) Join(service *ServiceDef) error {
 func (c *Client) Leave(service *ServiceDef) error {
 	return c.client.Call("Discovery.Leave", service, &Void{})
 }
+
+func (c *Client) Snapshot(group string) ([]*ServiceDef, error) {
+	var services []*ServiceDef
+	err := c.client.Call("Discovery.Snapshot", group, &services)
+	return services, err
+}

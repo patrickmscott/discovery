@@ -7,7 +7,7 @@ import (
 
 func TestServerSnapshot(t *testing.T) {
 	var server Server
-	result := server.Snapshot("group")
+	result := server.snapshot("group")
 	if result.Len() != 0 {
 		t.Error("Empty services list should return empty list")
 	}
@@ -15,12 +15,12 @@ func TestServerSnapshot(t *testing.T) {
 	server.services.Add(&ServiceDef{Host: "host1", Group: "group1"})
 	server.services.Add(&ServiceDef{Host: "host2", Group: "group2"})
 
-	result = server.Snapshot("group")
+	result = server.snapshot("group")
 	if result.Len() != 0 {
 		t.Error("group snapshot is not empty")
 	}
 
-	result = server.Snapshot("group1")
+	result = server.snapshot("group1")
 	if result.Len() != 1 {
 		t.Error("group1 snapshot should be a single entry", result.Len())
 	}
@@ -29,7 +29,7 @@ func TestServerSnapshot(t *testing.T) {
 		t.Error("group1 entry has wrong values", service)
 	}
 
-	result = server.Snapshot("group2")
+	result = server.snapshot("group2")
 	if result.Len() != 1 {
 		t.Error("group2 snapshot should be a single entry", result.Len())
 	}
@@ -44,7 +44,7 @@ func BenchmarkSnapshot(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		server.services.Add(
 			&ServiceDef{Host: "host", Port: uint16(i), Group: "group"})
-		if server.Snapshot("group").Len() != i+1 {
+		if server.snapshot("group").Len() != i+1 {
 			b.Error("Wrong snapshot size")
 		}
 	}
