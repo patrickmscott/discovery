@@ -91,84 +91,36 @@ func (l *serviceList) Get(index int) *serviceDefinition {
 func (l *serviceList) Len() int { return (*list.List)(l).Len() }
 
 type iterator struct {
-	list    *list.List
-	iter    *list.Element
-	cmp     func(service *serviceDefinition) int
-	hasMore bool // shortcut to avoid calling cmp
+	list *list.List
+	iter *list.Element
 }
 
-// Returns true if the iterator has more data.
-func (i *iterator) HasMore() bool {
-	if i.hasMore {
-		return true
-	}
-	i.hasMore = false
-	for ; i.iter != nil; i.iter = i.iter.Next() {
-		diff := i.cmp(i.iter.Value.(*serviceDefinition))
-		if diff == 0 {
-			i.hasMore = true
-			break
-		} else if diff > 0 {
-			i.iter = nil
-			break
-		}
-	}
-	return i.hasMore
-}
-
-// Returns the next *serviceDefinition in the iterator. Nil if this iterator has
-// no more data.
+// Returns the current *serviceDefinition and increments the iterator.
 func (i *iterator) Next() *serviceDefinition {
-	elem := i.next()
-	if elem == nil {
+	if i.iter == nil {
 		return nil
 	}
-	return elem.Value.(*serviceDefinition)
-}
 
-// Returns the next *serviceDefinition in the iterator after removing it from
-// the list. Nil if this iterator has no more data.
-func (i *iterator) Remove() *serviceDefinition {
-	elem := i.next()
-	if elem == nil {
-		return nil
-	}
-	def := elem.Value.(*serviceDefinition)
-	i.list.Remove(elem)
-	return def
-}
-
-func (i *iterator) next() *list.Element {
-	if !i.HasMore() {
-		return nil
-	}
-	elem := i.iter
+	service := i.iter.Value.(*serviceDefinition)
 	i.iter = i.iter.Next()
-	i.hasMore = false // more like unknown
-	return elem
+	return service
 }
 
-// Create an interator over the serviceDefinitions in a service group. Never
-// returns nil.
-func (l *serviceList) GroupIterator(group string) *iterator {
-	return &iterator{
-		(*list.List)(l),
-		(*list.List)(l).Front(),
-		func(service *serviceDefinition) int {
-			return strcmp(service.group, group)
-		},
-		false}
+// Removes the current value and increments the iterator.
+func (i *iterator) Remove() *serviceDefinition {
+	if i.iter == nil {
+		return nil
+	}
+
+	service := i.iter.Value.(*serviceDefinition)
+	next := i.iter.Next()
+	i.list.Remove(i.iter)
+	i.iter = next
+	return service
 }
 
-func (l *serviceList) ConnIterator(id int32) *iterator {
-	return &iterator{
-		(*list.List)(l),
-		(*list.List)(l).Front(),
-		func(service *serviceDefinition) int {
-			if service.connId == id {
-				return 0
-			}
-			return -1
-		},
-		false}
+// Create a simple iterator over all services.
+func (l *serviceList) Iterator() *iterator {
+	ll := (*list.List)(l)
+	return &iterator{ll, ll.Front()}
 }

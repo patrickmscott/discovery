@@ -22,8 +22,20 @@ const defaultSnapshotSize = 32
 func (s *Server) Snapshot(group string) *list.List {
 	log.Printf("Snapshot: '%s'\n", group)
 	var services list.List
-	for iter := s.services.GroupIterator(group); iter.HasMore(); {
-		services.PushBack(iter.Next())
+	iter := s.services.Iterator()
+	for {
+		s := iter.Next()
+		if s == nil {
+			break
+		}
+		// Services are ordered by group first so once we go beyond a group, we
+		// don't need to keep iterating.
+		diff := strcmp(s.group, group)
+		if diff > 0 {
+			break
+		} else if diff == 0 {
+			services.PushBack(s)
+		}
 	}
 	return &services
 }
@@ -32,7 +44,7 @@ func (s *Server) join(service *serviceDefinition) {
 	if !s.services.Add(service) {
 		return
 	}
-	log.Println("Join: ", service)
+	log.Println("Join:", service)
 	connections, ok := s.watchers[service.group]
 	if !ok {
 		return
@@ -46,7 +58,7 @@ func (s *Server) leave(service *serviceDefinition) {
 	if !s.services.Remove(service) {
 		return
 	}
-	log.Println("Leave: ", service)
+	log.Println("Leave:", service)
 	connections, ok := s.watchers[service.group]
 	if !ok {
 		return
@@ -57,9 +69,17 @@ func (s *Server) leave(service *serviceDefinition) {
 }
 
 func (s *Server) removeAll(conn *connection) {
-	for iter := s.services.ConnIterator(conn.id); iter.HasMore(); {
-		service := iter.Remove()
-		log.Println("Leave: ", service)
+	iter := s.services.Iterator()
+	for {
+		service := iter.Next()
+		if service == nil {
+			break
+		}
+		// Not the right connection id, just keep iterating.
+		if service.connId != conn.id {
+			continue
+		}
+		log.Println("Leave:", service)
 		connections, ok := s.watchers[service.group]
 		if !ok {
 			continue
@@ -67,6 +87,7 @@ func (s *Server) removeAll(conn *connection) {
 		for c := range connections {
 			c.SendLeave(service)
 		}
+		iter.Remove()
 	}
 }
 
