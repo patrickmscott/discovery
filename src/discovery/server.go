@@ -29,10 +29,10 @@ func (s *Server) Snapshot(group string) *list.List {
 }
 
 func (s *Server) join(service *serviceDefinition) {
-	log.Println("Join: ", service)
 	if !s.services.Add(service) {
 		return
 	}
+	log.Println("Join: ", service)
 	connections, ok := s.watchers[service.group]
 	if !ok {
 		return
@@ -43,10 +43,10 @@ func (s *Server) join(service *serviceDefinition) {
 }
 
 func (s *Server) leave(service *serviceDefinition) {
-	log.Println("Leave: ", service)
 	if !s.services.Remove(service) {
 		return
 	}
+	log.Println("Leave: ", service)
 	connections, ok := s.watchers[service.group]
 	if !ok {
 		return
@@ -58,7 +58,15 @@ func (s *Server) leave(service *serviceDefinition) {
 
 func (s *Server) removeAll(conn *connection) {
 	for iter := s.services.ConnIterator(conn.id); iter.HasMore(); {
-		s.leave(iter.Next())
+		service := iter.Remove()
+		log.Println("Leave: ", service)
+		connections, ok := s.watchers[service.group]
+		if !ok {
+			continue
+		}
+		for c := range connections {
+			c.SendLeave(service)
+		}
 	}
 }
 

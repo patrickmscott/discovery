@@ -192,38 +192,3 @@ func TestServiceListConnIterator(t *testing.T) {
 		t.Error("Invalid connection has a valid iterator")
 	}
 }
-
-func TestServiceListRemoveAll(t *testing.T) {
-	var list serviceList
-	list.Add(&serviceDefinition{Host: "host1", connId: 0})
-	list.Add(&serviceDefinition{Host: "host2", connId: 0})
-	list.Add(&serviceDefinition{Host: "host3", connId: 1})
-	list.Add(&serviceDefinition{Host: "host5", connId: 1})
-	list.Add(&serviceDefinition{Host: "host4", connId: 2})
-	list.Add(&serviceDefinition{Host: "host6", connId: 2})
-
-	if list.Len() != 6 {
-		t.Error("Wrong number of services")
-	}
-	list.RemoveAll(-1)
-	if list.Len() != 6 {
-		t.Error("Invalid connection id removed entries")
-	}
-
-	list.RemoveAll(0)
-	if list.Len() != 4 {
-		t.Error("Removing valid connection failed")
-	}
-	if list.Get(0).Host != "host3" || list.Get(1).Host != "host4" ||
-		list.Get(2).Host != "host5" || list.Get(3).Host != "host6" {
-		t.Error("Wrong entries after removing connId 0")
-	}
-
-	list.RemoveAll(2)
-	if list.Len() != 2 {
-		t.Error("Removing connId 2 failed")
-	}
-	if list.Get(0).Host != "host3" || list.Get(1).Host != "host5" {
-		t.Error("Wrong entries after removing connId 2")
-	}
-}

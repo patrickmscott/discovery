@@ -1,6 +1,7 @@
 package discovery
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -46,5 +47,20 @@ func BenchmarkSnapshot(b *testing.B) {
 		if server.Snapshot("group").Len() != i+1 {
 			b.Error("Wrong snapshot size")
 		}
+	}
+}
+
+func BenchmarkRemoveAll(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		var server Server
+		for j := 0; j < 50; j++ {
+			for k := 0; k < 5; k++ {
+				host := fmt.Sprintf("host#%d-%d", j, k)
+				server.services.Add(&serviceDefinition{Host: host, connId: int32(k)})
+			}
+		}
+		b.StartTimer()
+		server.removeAll(&connection{id: 1})
 	}
 }

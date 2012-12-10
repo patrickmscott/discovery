@@ -74,18 +74,6 @@ func (l *serviceList) Remove(service *serviceDefinition) bool {
 	return false
 }
 
-func (l *serviceList) RemoveAll(connId int32) {
-	list := (*list.List)(l)
-	for iter := list.Front(); iter != nil; {
-		e := iter.Value.(*serviceDefinition)
-		next := iter.Next()
-		if e.connId == connId {
-			list.Remove(iter)
-		}
-		iter = next
-	}
-}
-
 func (l *serviceList) Get(index int) *serviceDefinition {
 	if index < 0 || index >= l.Len() {
 		return nil
@@ -103,6 +91,7 @@ func (l *serviceList) Get(index int) *serviceDefinition {
 func (l *serviceList) Len() int { return (*list.List)(l).Len() }
 
 type iterator struct {
+	list    *list.List
 	iter    *list.Element
 	cmp     func(service *serviceDefinition) int
 	hasMore bool // shortcut to avoid calling cmp
@@ -127,22 +116,43 @@ func (i *iterator) HasMore() bool {
 	return i.hasMore
 }
 
-// Returns the next *serviceDefinition in the service group. Nil if this
-// iterator has no more data.
+// Returns the next *serviceDefinition in the iterator. Nil if this iterator has
+// no more data.
 func (i *iterator) Next() *serviceDefinition {
+	elem := i.next()
+	if elem == nil {
+		return nil
+	}
+	return elem.Value.(*serviceDefinition)
+}
+
+// Returns the next *serviceDefinition in the iterator after removing it from
+// the list. Nil if this iterator has no more data.
+func (i *iterator) Remove() *serviceDefinition {
+	elem := i.next()
+	if elem == nil {
+		return nil
+	}
+	def := elem.Value.(*serviceDefinition)
+	i.list.Remove(elem)
+	return def
+}
+
+func (i *iterator) next() *list.Element {
 	if !i.HasMore() {
 		return nil
 	}
-	def := i.iter.Value.(*serviceDefinition)
+	elem := i.iter
 	i.iter = i.iter.Next()
 	i.hasMore = false // more like unknown
-	return def
+	return elem
 }
 
 // Create an interator over the serviceDefinitions in a service group. Never
 // returns nil.
 func (l *serviceList) GroupIterator(group string) *iterator {
 	return &iterator{
+		(*list.List)(l),
 		(*list.List)(l).Front(),
 		func(service *serviceDefinition) int {
 			return strcmp(service.group, group)
@@ -152,6 +162,7 @@ func (l *serviceList) GroupIterator(group string) *iterator {
 
 func (l *serviceList) ConnIterator(id int32) *iterator {
 	return &iterator{
+		(*list.List)(l),
 		(*list.List)(l).Front(),
 		func(service *serviceDefinition) int {
 			if service.connId == id {
