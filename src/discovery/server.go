@@ -27,28 +27,28 @@ func (s *Server) Snapshot(group string) *list.List {
 	var services list.List
 	iter := s.services.Iterator()
 	for {
-		s := iter.Next()
-		if s == nil {
+		service := iter.Next()
+		if service == nil {
 			break
 		}
 		// Services are ordered by group first so once we go beyond a group, we
 		// don't need to keep iterating.
-		diff := strcmp(s.group, group)
+		diff := strcmp(service.Group, group)
 		if diff > 0 {
 			break
 		} else if diff == 0 {
-			services.PushBack(s)
+			services.PushBack(service)
 		}
 	}
 	return &services
 }
 
-func (s *Server) join(service *serviceDefinition) bool {
+func (s *Server) join(service *ServiceDef) bool {
 	if !s.services.Add(service) {
 		return false
 	}
-	log.Println("Join:", service)
-	connections, ok := s.watchers[service.group]
+	log.Println("Join:", service.toString())
+	connections, ok := s.watchers[service.Group]
 	if ok {
 		for conn := range connections {
 			conn.sendJoin(service)
@@ -57,12 +57,12 @@ func (s *Server) join(service *serviceDefinition) bool {
 	return true
 }
 
-func (s *Server) leave(service *serviceDefinition) bool {
+func (s *Server) leave(service *ServiceDef) bool {
 	if !s.services.Remove(service) {
 		return false
 	}
-	log.Println("Leave:", service)
-	connections, ok := s.watchers[service.group]
+	log.Println("Leave:", service.toString())
+	connections, ok := s.watchers[service.Group]
 	if ok {
 		for conn := range connections {
 			conn.sendLeave(service)
@@ -83,8 +83,8 @@ func (s *Server) removeAll(id int32) {
 			continue
 		}
 		iter.Remove()
-		log.Println("Leave:", service)
-		connections, ok := s.watchers[service.group]
+		log.Println("Leave:", service.toString())
+		connections, ok := s.watchers[service.Group]
 		if !ok {
 			continue
 		}

@@ -18,10 +18,10 @@ func (c *Client) Connect(host string, port uint16) error {
 	return err
 }
 
-func (c *Client) Join(join *JoinRequest) error {
-	return c.client.Call("Discovery.Join", join, &Void{})
+func (c *Client) Join(service *ServiceDef) error {
+	return c.client.Call("Discovery.Join", service, &Void{})
 }
 
-func (c *Client) Leave(leave *LeaveRequest) error {
-	return c.client.Call("Discovery.Leave", leave, &Void{})
+func (c *Client) Leave(service *ServiceDef) error {
+	return c.client.Call("Discovery.Leave", service, &Void{})
 }

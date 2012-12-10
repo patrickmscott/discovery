@@ -40,7 +40,7 @@ func main() {
 			log.Println("Invalid port:", args[3])
 			return
 		}
-		err = client.Join(&discovery.JoinRequest{
+		err = client.Join(&discovery.ServiceDef{
 			Group: args[1], Host: args[2], Port: uint16(port)})
 	default:
 	}

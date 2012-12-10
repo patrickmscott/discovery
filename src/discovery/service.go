@@ -30,15 +30,9 @@ func (d *Discovery) getHost(host string) string {
 
 type Void struct{}
 
-func (d *Discovery) Join(req *JoinRequest, v *Void) error {
-	d.server.eventChan <- func() {
-		d.resultChan <- d.server.join(&serviceDefinition{
-			Host:       d.getHost(req.Host),
-			Port:       req.Port,
-			CustomData: req.CustomData,
-			group:      req.Group,
-			connId:     d.id})
-	}
+func (d *Discovery) Join(service *ServiceDef, v *Void) error {
+	service.connId = d.id
+	d.server.eventChan <- func() { d.resultChan <- d.server.join(service) }
 	// TODO(pscott): Make this a channel that takes an error code?
 	if !<-d.resultChan {
 		return errors.New("Unable to add service")
@@ -46,19 +40,14 @@ func (d *Discovery) Join(req *JoinRequest, v *Void) error {
 	return nil
 }
 
-func (d *Discovery) Leave(req *LeaveRequest, v *Void) error {
-	d.server.eventChan <- func() {
-		d.resultChan <- d.server.leave(&serviceDefinition{
-			Host:   d.getHost(req.Host),
-			Port:   req.Port,
-			group:  req.Group,
-			connId: d.id})
-	}
+func (d *Discovery) Leave(service *ServiceDef, v *Void) error {
+	service.connId = d.id
+	d.server.eventChan <- func() { d.resultChan <- d.server.leave(service) }
 	if !<-d.resultChan {
 		return errors.New("Unable to remove service")
 	}
 	return nil
 }
 
-func (d *Discovery) sendJoin(service *serviceDefinition)  {}
-func (d *Discovery) sendLeave(service *serviceDefinition) {}
+func (d *Discovery) sendJoin(service *ServiceDef)  {}
+func (d *Discovery) sendLeave(service *ServiceDef) {}

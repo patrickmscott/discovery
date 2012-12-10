@@ -1,42 +1,15 @@
 package discovery
 
-import (
-	"container/list"
-	"fmt"
-)
-
-type serviceDefinition struct {
-	Host       string `json:"host"`
-	Port       uint16 `json:"port"`
-	CustomData []byte `json:"customData,omitempty"`
-	group      string
-	connId     int32
-}
+import "container/list"
 
 type serviceList list.List
 
-func (a *serviceDefinition) compare(b *serviceDefinition) int {
-	res := strcmp(a.group, b.group)
-	if res == 0 {
-		res = strcmp(a.Host, b.Host)
-	}
-	if res == 0 {
-		res = int(a.Port) - int(b.Port)
-	}
-	return res
-}
-
-func (s *serviceDefinition) String() string {
-	return fmt.Sprintf("'%s' %s:%d %v conn#%d",
-		s.group, s.Host, s.Port, s.CustomData, s.connId)
-}
-
 // Add a new service definition to the list. If the definition is added or
 // updated, return true.
-func (l *serviceList) Add(service *serviceDefinition) bool {
+func (l *serviceList) Add(service *ServiceDef) bool {
 	list := (*list.List)(l)
 	for iter := list.Front(); iter != nil; iter = iter.Next() {
-		e := iter.Value.(*serviceDefinition)
+		e := iter.Value.(*ServiceDef)
 		res := service.compare(e)
 		if res > 0 {
 			continue
@@ -57,10 +30,10 @@ func (l *serviceList) Add(service *serviceDefinition) bool {
 
 // Remove a service definition from the list. If a service has been removed,
 // return true. Different connections cannot remove services they did not add.
-func (l *serviceList) Remove(service *serviceDefinition) bool {
+func (l *serviceList) Remove(service *ServiceDef) bool {
 	list := (*list.List)(l)
 	for iter := list.Front(); iter != nil; iter = iter.Next() {
-		e := iter.Value.(*serviceDefinition)
+		e := iter.Value.(*ServiceDef)
 		res := service.compare(e)
 		if res < 0 {
 			continue
@@ -74,13 +47,13 @@ func (l *serviceList) Remove(service *serviceDefinition) bool {
 	return false
 }
 
-func (l *serviceList) Get(index int) *serviceDefinition {
+func (l *serviceList) Get(index int) *ServiceDef {
 	if index < 0 || index >= l.Len() {
 		return nil
 	}
 	for iter := (*list.List)(l).Front(); iter != nil; iter = iter.Next() {
 		if index == 0 {
-			return iter.Value.(*serviceDefinition)
+			return iter.Value.(*ServiceDef)
 		}
 		index--
 	}
@@ -96,25 +69,25 @@ type iterator struct {
 	curr *list.Element
 }
 
-// Returns the current *serviceDefinition and increments the iterator.
-func (i *iterator) Next() *serviceDefinition {
+// Returns the current *ServiceDef and increments the iterator.
+func (i *iterator) Next() *ServiceDef {
 	if i.iter == nil {
 		return nil
 	}
 
 	i.curr = i.iter
-	service := i.iter.Value.(*serviceDefinition)
+	service := i.iter.Value.(*ServiceDef)
 	i.iter = i.iter.Next()
 	return service
 }
 
 // Removes the value returned by Next(). Does not increment the iterator.
-func (i *iterator) Remove() *serviceDefinition {
+func (i *iterator) Remove() *ServiceDef {
 	if i.curr == nil {
 		return nil
 	}
 
-	service := i.curr.Value.(*serviceDefinition)
+	service := i.curr.Value.(*ServiceDef)
 	i.list.Remove(i.curr)
 	return service
 }
