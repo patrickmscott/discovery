@@ -9,7 +9,7 @@ type ServiceDef struct {
 	Port  uint16 `json:"port"`
 	Group string `json:"group"`
 	// CustomData need not be present when a client calls Discovery.Leave.
-	CustomData []byte `json:"custom_data",omitempty"`
+	CustomData []byte `json:"custom_data,omitempty"`
 
 	// Used internally to denote which connection the service is attached.
 	connId int32

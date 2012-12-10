@@ -2,7 +2,9 @@ package discovery
 
 import (
 	"container/list"
+	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/rpc"
@@ -126,6 +128,29 @@ func (s *Server) Serve(port uint16) (err error) {
 	return nil
 }
 
+var debug = flag.Bool(
+	"debugRpc", false, "Enable debug output of all rpc traffic")
+
+type debugInput struct {
+	rwc io.ReadWriteCloser
+}
+
+func (in *debugInput) Read(p []byte) (n int, err error) {
+	n, err = in.rwc.Read(p)
+	log.Println("rpc[r]:", string(p), err)
+	return
+}
+
+func (in *debugInput) Write(p []byte) (n int, err error) {
+	n, err = in.rwc.Write(p)
+	log.Println("rpc[w]:", string(p), err)
+	return
+}
+
+func (in *debugInput) Close() error {
+	return in.rwc.Close()
+}
+
 func (s *Server) handleConnection(conn net.Conn) {
 	// We create a new server each time so that we can have access to the
 	// underlying connection. The standard rpc package does not give us access
@@ -144,9 +169,15 @@ func (s *Server) handleConnection(conn net.Conn) {
 	// Set up the service variables.
 	service.init(conn, atomic.AddInt32(&s.nextConnId, 1))
 
+	// If debugging is enabled, log all rpc traffic.
+	var rwc io.ReadWriteCloser = conn
+	if *debug {
+		rwc = &debugInput{conn}
+	}
+
 	// Set up the rpc service and start serving the connection.
 	server.Register(service)
-	server.ServeCodec(jsonrpc.NewServerCodec(conn))
+	server.ServeCodec(jsonrpc.NewServerCodec(rwc))
 
 	// Connection has disconnected. Remove any registered services.
 	s.removeAll(service.id)
