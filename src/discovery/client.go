@@ -2,26 +2,26 @@ package discovery
 
 import (
 	"fmt"
-	"net"
+	"net/rpc"
+	"net/rpc/jsonrpc"
 )
 
 const DefaultPort uint16 = 3472 /* DISC */
 
 type Client struct {
-	proto Protocol
-	conn  net.Conn
+	client *rpc.Client
 }
 
 func (c *Client) Connect(host string, port uint16) error {
-	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", host, port))
-	c.conn = conn
+	client, err := jsonrpc.Dial("tcp", fmt.Sprintf("%s:%d", host, port))
+	c.client = client
 	return err
 }
 
 func (c *Client) Join(join *JoinRequest) error {
-	return c.proto.writeRequest(c.conn, join)
+	return c.client.Call("Discovery.Join", join, &Void{})
 }
 
 func (c *Client) Leave(leave *LeaveRequest) error {
-	return c.proto.writeRequest(c.conn, leave)
+	return c.client.Call("Discovery.Leave", leave, &Void{})
 }

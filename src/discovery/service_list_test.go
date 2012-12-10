@@ -140,20 +140,26 @@ func TestServiceListIterator(t *testing.T) {
 	}
 
 	iter = list.Iterator()
-	def := iter.Remove()
-	if def.Host != "host1" {
-		t.Error("Remove failed", def)
+	if iter.Remove() != nil {
+		t.Error("Remove before Next() failed")
+	}
+	def := iter.Next()
+	if def.Host != iter.Remove().Host {
+		t.Error("Remove deleted the wrong entry")
 	}
 	def = iter.Next()
 	if def.Host != "host2" {
 		t.Error("Next after remove failed", def)
 	}
+	iter.Next()
 	iter.Remove()
+	iter.Next()
 	iter.Remove()
 	def = iter.Next()
 	if def.Host != "host5" {
 		t.Error("Wrong entry after removing 2 entries", def)
 	}
+
 	if iter.Next() != nil {
 		t.Error("Extra entries")
 	}

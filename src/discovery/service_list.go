@@ -93,6 +93,7 @@ func (l *serviceList) Len() int { return (*list.List)(l).Len() }
 type iterator struct {
 	list *list.List
 	iter *list.Element
+	curr *list.Element
 }
 
 // Returns the current *serviceDefinition and increments the iterator.
@@ -101,26 +102,25 @@ func (i *iterator) Next() *serviceDefinition {
 		return nil
 	}
 
+	i.curr = i.iter
 	service := i.iter.Value.(*serviceDefinition)
 	i.iter = i.iter.Next()
 	return service
 }
 
-// Removes the current value and increments the iterator.
+// Removes the value returned by Next(). Does not increment the iterator.
 func (i *iterator) Remove() *serviceDefinition {
-	if i.iter == nil {
+	if i.curr == nil {
 		return nil
 	}
 
-	service := i.iter.Value.(*serviceDefinition)
-	next := i.iter.Next()
-	i.list.Remove(i.iter)
-	i.iter = next
+	service := i.curr.Value.(*serviceDefinition)
+	i.list.Remove(i.curr)
 	return service
 }
 
 // Create a simple iterator over all services.
 func (l *serviceList) Iterator() *iterator {
 	ll := (*list.List)(l)
-	return &iterator{ll, ll.Front()}
+	return &iterator{list: ll, iter: ll.Front()}
 }

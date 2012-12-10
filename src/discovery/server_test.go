@@ -61,6 +61,6 @@ func BenchmarkRemoveAll(b *testing.B) {
 			}
 		}
 		b.StartTimer()
-		server.removeAll(&connection{id: 1})
+		server.removeAll(1)
 	}
 }

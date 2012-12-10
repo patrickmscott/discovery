@@ -3,7 +3,7 @@ package main
 import (
 	"discovery"
 	"flag"
-	"fmt"
+	"log"
 	"strconv"
 )
 
@@ -18,25 +18,26 @@ func main() {
 	var client discovery.Client
 	err := client.Connect(*host, uint16(*port))
 	if err != nil {
-		fmt.Println("Error connecting:", err)
+		log.Println("Error connecting:", err)
 		return
 	}
 
 	args := flag.Args()
 	if len(args) < 1 {
-		fmt.Println("Invalid command")
+		log.Println("Invalid command")
 		return
 	}
 
 	switch args[0] {
 	case "join":
 		if len(args) < 4 {
-			fmt.Println("client join requires <group> <host> <port>")
+			log.Println("client join requires <group> <host> <port>")
 			return
 		}
-		port, err := strconv.ParseInt(args[3], 10, 16)
+		var port int64
+		port, err = strconv.ParseInt(args[3], 10, 16)
 		if err != nil {
-			fmt.Println("Invalid port:", args[3])
+			log.Println("Invalid port:", args[3])
 			return
 		}
 		err = client.Join(&discovery.JoinRequest{
@@ -44,10 +45,9 @@ func main() {
 	default:
 	}
 	if err != nil {
-		fmt.Println("Error:", err)
+		log.Println("Error:", err)
 		return
 	}
-	fmt.Println("Ctrl-C to exit...")
-	sem := make(chan int)
-	<-sem
+	log.Println("Ctrl-C to exit...")
+	<-make(chan int)
 }
