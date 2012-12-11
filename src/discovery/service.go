@@ -3,6 +3,8 @@ package discovery
 import (
 	"errors"
 	"net"
+	"net/rpc"
+	"net/rpc/jsonrpc"
 )
 
 type Discovery struct {
@@ -10,6 +12,7 @@ type Discovery struct {
 	conn       net.Conn
 	id         int32
 	resultChan chan bool
+	client     *rpc.Client
 }
 
 func newDiscoveryService(server *Server) *Discovery {
@@ -67,5 +70,25 @@ func (d *Discovery) Snapshot(group string, snapshot *[]*ServiceDef) error {
 	return nil
 }
 
-func (d *Discovery) sendJoin(service *ServiceDef)  {}
-func (d *Discovery) sendLeave(service *ServiceDef) {}
+// Start watching changes to the given group. Never returns an error.
+func (d *Discovery) Watch(group string, v *Void) error {
+	d.server.eventChan <- func() {
+		if d.client == nil {
+			d.client = jsonrpc.NewClient(d.conn)
+		}
+		d.server.watch(group, d.client)
+	}
+	return nil
+}
+
+// Stop watching changes to the given group. Due to the asynchronous nature of
+// this method, changes in route to the connection may be sent after this method
+// is called. Never returns an error.
+func (d *Discovery) Ignore(group string, v *Void) error {
+	d.server.eventChan <- func() {
+		if d.client != nil {
+			d.server.ignore(group, d.client)
+		}
+	}
+	return nil
+}

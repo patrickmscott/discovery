@@ -18,7 +18,7 @@ type Server struct {
 	eventChan   chan func()
 	servicePool chan *Discovery
 	nextConnId  int32
-	watchers    map[string](map[*Discovery]bool)
+	watchers    map[string](map[*rpc.Client]bool)
 }
 
 // Small default size to avoid allocating too much for small groups.
@@ -50,10 +50,10 @@ func (s *Server) join(service *ServiceDef) bool {
 		return false
 	}
 	log.Println("Join:", service.toString())
-	connections, ok := s.watchers[service.Group]
+	clients, ok := s.watchers[service.Group]
 	if ok {
-		for conn := range connections {
-			conn.sendJoin(service)
+		for client := range clients {
+			client.Go("DiscoveryClient.Join", service, &Void{}, nil)
 		}
 	}
 	return true
@@ -64,16 +64,23 @@ func (s *Server) leave(service *ServiceDef) bool {
 		return false
 	}
 	log.Println("Leave:", service.toString())
-	connections, ok := s.watchers[service.Group]
+	clients, ok := s.watchers[service.Group]
 	if ok {
-		for conn := range connections {
-			conn.sendLeave(service)
+		for client := range clients {
+			client.Go("DiscoveryClient.Leave", service, &Void{}, nil)
 		}
 	}
 	return true
 }
 
-func (s *Server) removeAll(id int32) {
+func (s *Server) removeAll(d *Discovery) {
+	// Get rid of any watchers on this connection.
+	if d.client != nil {
+		for _, val := range s.watchers {
+			delete(val, d.client)
+		}
+	}
+
 	iter := s.services.Iterator()
 	for {
 		service := iter.Next()
@@ -81,22 +88,26 @@ func (s *Server) removeAll(id int32) {
 			break
 		}
 		// Not the right connection id, just keep iterating.
-		if service.connId != id {
+		if service.connId != d.id {
 			continue
 		}
 		iter.Remove()
 		log.Println("Leave:", service.toString())
-		connections, ok := s.watchers[service.Group]
+		clients, ok := s.watchers[service.Group]
 		if ok {
-			for c := range connections {
-				c.sendLeave(service)
+			for client := range clients {
+				client.Go("DiscoveryClient.Leave", service, &Void{}, nil)
 			}
 		}
 	}
 }
 
-func (s *Server) watch(group string, conn *Discovery) {
-	s.watchers[group][conn] = true
+func (s *Server) watch(group string, client *rpc.Client) {
+	s.watchers[group][client] = true
+}
+
+func (s *Server) ignore(group string, client *rpc.Client) {
+	delete(s.watchers[group], client)
 }
 
 // Listen for connections on the given port.
@@ -179,7 +190,7 @@ func (s *Server) handleConnection(conn net.Conn) {
 	server.ServeCodec(jsonrpc.NewServerCodec(rwc))
 
 	// Connection has disconnected. Remove any registered services.
-	s.removeAll(service.id)
+	s.removeAll(service)
 
 	select {
 	case s.servicePool <- service:
