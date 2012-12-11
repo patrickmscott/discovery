@@ -52,6 +52,7 @@ func (d *Discovery) Leave(service *ServiceDef, v *Void) error {
 func (d *Discovery) Snapshot(group string, snapshot *[]*ServiceDef) error {
 	d.server.eventChan <- func() {
 		services := d.server.snapshot(group)
+		// TODO(pscott): Reuse an internal buffer, resizing if necessary.
 		*snapshot = make([]*ServiceDef, services.Len())
 		i := 0
 		for iter := services.Front(); iter != nil; iter = iter.Next() {

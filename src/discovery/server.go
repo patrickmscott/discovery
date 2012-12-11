@@ -87,11 +87,10 @@ func (s *Server) removeAll(id int32) {
 		iter.Remove()
 		log.Println("Leave:", service.toString())
 		connections, ok := s.watchers[service.Group]
-		if !ok {
-			continue
-		}
-		for c := range connections {
-			c.sendLeave(service)
+		if ok {
+			for c := range connections {
+				c.sendLeave(service)
+			}
 		}
 	}
 }
