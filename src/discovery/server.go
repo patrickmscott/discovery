@@ -21,9 +21,6 @@ type Server struct {
 	watchers    map[string](map[*rpc.Client]bool)
 }
 
-// Small default size to avoid allocating too much for small groups.
-const defaultSnapshotSize = 32
-
 func (s *Server) snapshot(group string) *list.List {
 	log.Printf("Snapshot: '%s'\n", group)
 	var services list.List
@@ -53,7 +50,10 @@ func (s *Server) join(service *ServiceDef) bool {
 	clients, ok := s.watchers[service.Group]
 	if ok {
 		for client := range clients {
-			client.Go("DiscoveryClient.Join", service, &Void{}, nil)
+			// Although client.Go does not wait for the response, it does block
+			// sending the request. Invoke the Go method in a separate go routine to
+			// not block.
+			go client.Go("DiscoveryClient.Join", service, &Void{}, nil)
 		}
 	}
 	return true
@@ -63,14 +63,21 @@ func (s *Server) leave(service *ServiceDef) bool {
 	if !s.services.Remove(service) {
 		return false
 	}
+	s.sendLeave(service)
+	return true
+}
+
+func (s *Server) sendLeave(service *ServiceDef) {
 	log.Println("Leave:", service.toString())
 	clients, ok := s.watchers[service.Group]
 	if ok {
 		for client := range clients {
-			client.Go("DiscoveryClient.Leave", service, &Void{}, nil)
+			// Although client.Go does not wait for the response, it does block
+			// sending the request. Invoke the Go method in a separate go routine to
+			// not block.
+			go client.Go("DiscoveryClient.Leave", service, &Void{}, nil)
 		}
 	}
-	return true
 }
 
 func (s *Server) removeAll(d *Discovery) {
@@ -92,22 +99,31 @@ func (s *Server) removeAll(d *Discovery) {
 			continue
 		}
 		iter.Remove()
-		log.Println("Leave:", service.toString())
-		clients, ok := s.watchers[service.Group]
-		if ok {
-			for client := range clients {
-				client.Go("DiscoveryClient.Leave", service, &Void{}, nil)
-			}
-		}
+		s.sendLeave(service)
 	}
 }
 
 func (s *Server) watch(group string, client *rpc.Client) {
-	s.watchers[group][client] = true
+	m, ok := s.watchers[group]
+	if !ok {
+		s.watchers[group] = make(map[*rpc.Client]bool)
+		m = s.watchers[group]
+	}
+	m[client] = true
 }
 
 func (s *Server) ignore(group string, client *rpc.Client) {
-	delete(s.watchers[group], client)
+	if m, ok := s.watchers[group]; ok {
+		delete(m, client)
+	}
+}
+
+func NewServer() *Server {
+	return &Server{
+		// TODO(pscott): Add flags for event and service buffer size.
+		eventChan:   make(chan func(), 1024),
+		servicePool: make(chan *Discovery, 128),
+		watchers:    make(map[string]map[*rpc.Client]bool)}
 }
 
 // Listen for connections on the given port.
@@ -118,8 +134,6 @@ func (s *Server) Serve(port uint16) (err error) {
 		return
 	}
 
-	s.eventChan = make(chan func(), 1024)
-	s.servicePool = make(chan *Discovery, 128)
 	go func() {
 		log.Println("Event loop start...")
 		for {
