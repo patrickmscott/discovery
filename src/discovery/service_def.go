@@ -17,6 +17,9 @@ type ServiceDef struct {
 
 // Compare this service definition with b. Services are ordered by group, then
 // by host, and finally by port.
+// a < b  return < 0
+// a == b return 0
+// a > b  return > 0
 func (a *ServiceDef) compare(b *ServiceDef) int {
 	res := strcmp(a.Group, b.Group)
 	if res == 0 {

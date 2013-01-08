@@ -105,6 +105,47 @@ func TestServerJoin(t *testing.T) {
 	}
 }
 
+func TestServerLeave(t *testing.T) {
+	server := NewServer()
+	impl := &testClientImpl{signal: make(chan int)}
+	read, write := net.Pipe()
+	serveTestImpl(impl, read)
+	server.watch("group1", jsonrpc.NewClient(write))
+
+	if server.leave(&ServiceDef{Host: "host", Group: "group1"}) {
+		t.Error("Server leave should have failed")
+	}
+
+	if !server.join(&ServiceDef{Host: "host", Group: "group1"}) {
+		t.Error("Group1 join failed")
+	}
+	if !server.join(&ServiceDef{Host: "host", Group: "group2"}) {
+		t.Error("Group2 join failed")
+	}
+	// No watchers of group2 so impl.signal will only have 1 entry.
+	<-impl.signal
+
+	if !server.leave(&ServiceDef{Host: "host", Group: "group2"}) {
+		t.Error("Server leave failed")
+	}
+	if impl.leave != nil {
+		t.Error("group2 sent a leave event")
+	}
+
+	if !server.leave(&ServiceDef{Host: "host", Group: "group1"}) {
+		t.Error("Server leave failed")
+	}
+	<-impl.signal
+	if impl.leave == nil || impl.leave.Host != "host" ||
+		impl.leave.Group != "group1" {
+		t.Error("Wrong leave definition", impl.leave)
+	}
+
+	if server.leave(&ServiceDef{Host: "host", Group: "group1"}) {
+		t.Error("Duplicate leave did not fail")
+	}
+}
+
 func BenchmarkSnapshot(b *testing.B) {
 	server := NewServer()
 	for i := 0; i < b.N; i++ {

@@ -35,7 +35,7 @@ func (l *serviceList) Remove(service *ServiceDef) bool {
 	for iter := list.Front(); iter != nil; iter = iter.Next() {
 		e := iter.Value.(*ServiceDef)
 		res := service.compare(e)
-		if res < 0 {
+		if res > 0 {
 			continue
 		} else if res == 0 && e.connId == service.connId {
 			list.Remove(iter)
@@ -62,6 +62,7 @@ func (l *serviceList) Get(index int) *ServiceDef {
 }
 
 func (l *serviceList) Len() int { return (*list.List)(l).Len() }
+func (l *serviceList) Clear()   { (*list.List)(l).Init() }
 
 type iterator struct {
 	list *list.List

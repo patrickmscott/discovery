@@ -64,6 +64,22 @@ func TestServiceListRemove(t *testing.T) {
 	if list.Remove(&ServiceDef{Host: "host", connId: 1}) {
 		t.Error("Removing from a different connection should fail")
 	}
+
+	list.Clear()
+	list.Add(&ServiceDef{Host: "host1"})
+	list.Add(&ServiceDef{Host: "host2"})
+	list.Add(&ServiceDef{Host: "host3"})
+
+	if !list.Remove(&ServiceDef{Host: "host2"}) {
+		t.Error("Removing middle host failed")
+	}
+
+	if list.Len() != 2 ||
+		list.Get(0).Host != "host1" ||
+		list.Get(1).Host != "host3" {
+		t.Error("Removing middle host resulted in bad list", list.Len(),
+			list.Get(0), list.Get(1))
+	}
 }
 
 func TestServiceListGet(t *testing.T) {
