@@ -95,7 +95,8 @@ func TestServerJoin(t *testing.T) {
 	if !server.join(&ServiceDef{Host: "h", Group: "group2"}) {
 		t.Error("Server join failed")
 	}
-	time.Sleep(20 * time.Millisecond)
+	// TODO(pscott): Figure out a better way to test this.
+	time.Sleep(50 * time.Millisecond)
 	if impl.join != nil {
 		t.Error("No join should have been sent")
 	}
@@ -128,6 +129,8 @@ func TestServerLeave(t *testing.T) {
 	if !server.leave(&ServiceDef{Host: "host", Group: "group2"}) {
 		t.Error("Server leave failed")
 	}
+	// TODO(pscott): Figure out a better way to test this.
+	time.Sleep(50 * time.Millisecond)
 	if impl.leave != nil {
 		t.Error("group2 sent a leave event")
 	}
@@ -146,7 +149,45 @@ func TestServerLeave(t *testing.T) {
 	}
 }
 
-func BenchmarkSnapshot(b *testing.B) {
+func TestServerRemoveAll(t *testing.T) {
+	server := NewServer()
+
+	server.join(&ServiceDef{Host: "host1", Group: "group"})
+	server.join(&ServiceDef{Host: "host2", Group: "group"})
+	server.join(&ServiceDef{Host: "host3", Group: "group"})
+	server.join(&ServiceDef{Host: "host4", Group: "group", connId: 1})
+	server.join(&ServiceDef{Host: "host", Group: "group1"})
+
+	_, write := net.Pipe()
+	client := jsonrpc.NewClient(write)
+	server.watch("group", client)
+
+	// Does not do anything.
+	server.removeAll(&Discovery{id: 2})
+	if len(server.watchers) != 1 {
+		t.Error("Number of watchers is incorrect", len(server.watchers))
+	}
+	if server.services.Len() != 5 {
+		t.Error("Number of services is incorrect", server.services.Len())
+	}
+
+	// Removes 4 services and the only watcher.
+	server.removeAll(&Discovery{client: client, id: 0})
+	if len(server.watchers) != 0 {
+		t.Error("Watchers is not empty", len(server.watchers))
+	}
+	if server.services.Len() != 1 {
+		t.Error("Number of services is incorrect", server.services.Len())
+	}
+
+	// Removes a single service.
+	server.removeAll(&Discovery{id: 1})
+	if server.services.Len() != 0 {
+		t.Error("Number of services is incorrect", server.services.Len())
+	}
+}
+
+func BenchmarkServerSnapshot(b *testing.B) {
 	server := NewServer()
 	for i := 0; i < b.N; i++ {
 		server.services.Add(
@@ -157,7 +198,7 @@ func BenchmarkSnapshot(b *testing.B) {
 	}
 }
 
-func BenchmarkRemoveAll(b *testing.B) {
+func BenchmarkServerRemoveAll(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
 		server := NewServer()
@@ -168,6 +209,6 @@ func BenchmarkRemoveAll(b *testing.B) {
 			}
 		}
 		b.StartTimer()
-		server.removeAll(&Discovery{id: 1})
+		server.removeAll(&Discovery{})
 	}
 }

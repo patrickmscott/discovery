@@ -83,8 +83,11 @@ func (s *Server) sendLeave(service *ServiceDef) {
 func (s *Server) removeAll(d *Discovery) {
 	// Get rid of any watchers on this connection.
 	if d.client != nil {
-		for _, val := range s.watchers {
+		for group, val := range s.watchers {
 			delete(val, d.client)
+			if len(val) == 0 {
+				delete(s.watchers, group)
+			}
 		}
 	}
 
