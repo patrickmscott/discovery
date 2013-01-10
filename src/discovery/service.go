@@ -2,15 +2,17 @@ package discovery
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"net/rpc"
 	"net/rpc/jsonrpc"
 )
 
 type Discovery struct {
-	server     *Server
-	conn       net.Conn
-	id         int32
+	server *Server
+	conn   net.Conn
+	id     int32
+	// TODO(pscott): Make this a channel that takes an error code?
 	resultChan chan bool
 	client     *rpc.Client
 }
@@ -24,11 +26,9 @@ func (d *Discovery) init(conn net.Conn, id int32) {
 	d.id = id
 }
 
-func (d *Discovery) getHost(host string) string {
-	if host != "" {
-		return host
-	}
-	return d.conn.RemoteAddr().String()
+func (d *Discovery) clientAddr() string {
+	tcpAddr := d.conn.RemoteAddr().(*net.TCPAddr)
+	return fmt.Sprintf("%s:%d", tcpAddr.IP.String(), DefaultPort)
 }
 
 type Void struct{}
@@ -36,7 +36,6 @@ type Void struct{}
 func (d *Discovery) Join(service *ServiceDef, v *Void) error {
 	service.connId = d.id
 	d.server.eventChan <- func() { d.resultChan <- d.server.join(service) }
-	// TODO(pscott): Make this a channel that takes an error code?
 	if !<-d.resultChan {
 		return errors.New("Unable to add service")
 	}
@@ -55,7 +54,8 @@ func (d *Discovery) Leave(service *ServiceDef, v *Void) error {
 func (d *Discovery) Snapshot(group string, snapshot *[]*ServiceDef) error {
 	d.server.eventChan <- func() {
 		services := d.server.snapshot(group)
-		// TODO(pscott): Reuse an internal buffer, resizing if necessary.
+		// TODO(pscott): Reuse an internal buffer, resizing if necessary. Might
+		// require locking as multiple snapshot requests can be sent in parallel.
 		*snapshot = make([]*ServiceDef, services.Len())
 		i := 0
 		for iter := services.Front(); iter != nil; iter = iter.Next() {
@@ -73,10 +73,21 @@ func (d *Discovery) Snapshot(group string, snapshot *[]*ServiceDef) error {
 // Start watching changes to the given group. Never returns an error.
 func (d *Discovery) Watch(group string, v *Void) error {
 	d.server.eventChan <- func() {
+		// Do the client check in the server event loop to avoid any locking or race
+		// conditions.
 		if d.client == nil {
-			d.client = jsonrpc.NewClient(d.conn)
+			var err error
+			// TODO(pscott): Figure out how to multiplex this connection. If we could
+			// reuse the same connection, we could avoid having to assume the client
+			// is running the DiscoveryClient service on the default port.
+			d.client, err = jsonrpc.Dial("tcp", d.clientAddr())
+			d.resultChan <- err == nil
 		}
 		d.server.watch(group, d.client)
+	}
+	if !<-d.resultChan {
+		return errors.New(
+			"Watch failed, unable to connect to DiscoveryClient service")
 	}
 	return nil
 }
