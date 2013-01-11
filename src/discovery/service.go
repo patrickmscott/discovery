@@ -26,9 +26,21 @@ func (d *Discovery) init(conn net.Conn, id int32) {
 	d.id = id
 }
 
-func (d *Discovery) clientAddr() string {
-	tcpAddr := d.conn.RemoteAddr().(*net.TCPAddr)
-	return fmt.Sprintf("%s:%d", tcpAddr.IP.String(), DefaultPort)
+func (d *Discovery) rpcClient() *rpc.Client {
+	if d.client == nil {
+		tcpAddr, ok := d.conn.RemoteAddr().(*net.TCPAddr)
+		if !ok {
+			return nil
+		}
+		// TODO(pscott): Figure out how to multiplex this connection. If we could
+		// reuse the same connection, we could avoid having to assume the client
+		// is running the DiscoveryClient service on the default port.
+		address := fmt.Sprintf("%s:%d", tcpAddr.IP.String(), DefaultPort)
+
+		// A failure in connecting will return a nil client.
+		d.client, _ = jsonrpc.Dial("tcp", address)
+	}
+	return d.client
 }
 
 type Void struct{}
@@ -75,15 +87,12 @@ func (d *Discovery) Watch(group string, v *Void) error {
 	d.server.eventChan <- func() {
 		// Do the client check in the server event loop to avoid any locking or race
 		// conditions.
-		if d.client == nil {
-			var err error
-			// TODO(pscott): Figure out how to multiplex this connection. If we could
-			// reuse the same connection, we could avoid having to assume the client
-			// is running the DiscoveryClient service on the default port.
-			d.client, err = jsonrpc.Dial("tcp", d.clientAddr())
-			d.resultChan <- err == nil
+		client := d.rpcClient()
+		success := client != nil
+		if success {
+			d.server.watch(group, client)
 		}
-		d.server.watch(group, d.client)
+		d.resultChan <- success
 	}
 	if !<-d.resultChan {
 		return errors.New(
@@ -100,6 +109,8 @@ func (d *Discovery) Ignore(group string, v *Void) error {
 		if d.client != nil {
 			d.server.ignore(group, d.client)
 		}
+		d.resultChan <- true
 	}
+	<-d.resultChan
 	return nil
 }

@@ -3,6 +3,7 @@ package discovery
 import (
 	"bytes"
 	"net"
+	"net/rpc/jsonrpc"
 	"testing"
 )
 
@@ -134,7 +135,66 @@ func TestDiscoverySnapshot(t *testing.T) {
 }
 
 func TestDiscoveryWatch(t *testing.T) {
+	server := NewServer()
+	go server.processEvents()
+	disc := initDiscoveryTest(server, 0)
+
+	err := disc.Watch("group", &Void{})
+	if err == nil {
+		t.Error("Watching without a client should fail")
+	}
+	if disc.client != nil {
+		t.Error()
+	}
+	_, ok := server.watchers["group"]
+	if ok {
+		t.Error("Watcher should not be added")
+	}
+
+	_, write := net.Pipe()
+	disc.client = jsonrpc.NewClient(write)
+
+	err = disc.Watch("group", &Void{})
+	if err != nil {
+		t.Error(err)
+	}
+
+	if !server.watchers["group"][disc.client] {
+		t.Error("Watcher not added")
+	}
 }
 
 func TestDiscoveryIgnore(t *testing.T) {
+	server := NewServer()
+	go server.processEvents()
+	disc := initDiscoveryTest(server, 0)
+
+	_, write := net.Pipe()
+	disc.client = jsonrpc.NewClient(write)
+	disc.Watch("group", &Void{})
+	if server.watchers["group"] == nil || !server.watchers["group"][disc.client] {
+		t.Error("Watcher not registered")
+	}
+
+	disc.Ignore("diff_group", &Void{})
+	if server.watchers["group"] == nil || !server.watchers["group"][disc.client] {
+		t.Error("Watcher removed")
+	}
+
+	otherClient := initDiscoveryTest(server, 1)
+	otherClient.client = jsonrpc.NewClient(write)
+	otherClient.Watch("group", &Void{})
+	if len(server.watchers["group"]) != 2 {
+		t.Error("Wrong watcher count")
+	}
+
+	disc.Ignore("group", &Void{})
+	if len(server.watchers["group"]) != 1 {
+		t.Error("Watcher was not removed")
+	}
+
+	otherClient.Ignore("group", &Void{})
+	if server.watchers["group"] != nil {
+		t.Error("Watcher group not deleted")
+	}
 }

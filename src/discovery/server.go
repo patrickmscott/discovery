@@ -118,6 +118,9 @@ func (s *Server) watch(group string, client *rpc.Client) {
 func (s *Server) ignore(group string, client *rpc.Client) {
 	if m, ok := s.watchers[group]; ok {
 		delete(m, client)
+		if len(m) == 0 {
+			delete(s.watchers, group)
+		}
 	}
 }
 
