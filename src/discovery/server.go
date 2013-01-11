@@ -129,6 +129,13 @@ func NewServer() *Server {
 		watchers:    make(map[string]map[*rpc.Client]bool)}
 }
 
+func (s *Server) processEvents() {
+	log.Println("Event loop start...")
+	for {
+		(<-s.eventChan)()
+	}
+}
+
 // Listen for connections on the given port.
 func (s *Server) Serve(port uint16) (err error) {
 	log.Println("Listening on port", port)
@@ -137,12 +144,7 @@ func (s *Server) Serve(port uint16) (err error) {
 		return
 	}
 
-	go func() {
-		log.Println("Event loop start...")
-		for {
-			(<-s.eventChan)()
-		}
-	}()
+	go s.processEvents()
 
 	for {
 		conn, err := listener.Accept()
