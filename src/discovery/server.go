@@ -214,6 +214,9 @@ func (s *Server) handleConnection(conn net.Conn) {
 	// Connection has disconnected. Remove any registered services.
 	s.removeAll(service)
 
+	// Reset the service state.
+	service.init(nil, -1)
+
 	select {
 	case s.servicePool <- service:
 		// Success
