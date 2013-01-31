@@ -1,0 +1,77 @@
+package discovery;
+
+// Basic service type. Most protocol messages require a ServiceDefinition.
+message ServiceDefinition {
+  required string host = 1;
+  required int32 port = 2;
+  optional bytes custom_data = 3;
+}
+
+enum MessageType {
+  // Request types
+  JOIN_REQUEST      = 0;
+  LEAVE_REQUEST     = 1;
+  SNAPSHOT_REQUEST  = 2;
+  WATCH_REQUEST     = 3;
+  IGNORE_REQUEST    = 4;
+
+  // Last request number. Used internally to identify a request or response.
+  __LAST_REQUEST    = 99;
+
+  // Response types
+  ERROR_RESPONSE    = 100;
+  SNAPSHOT_RESPONSE = 101;
+}
+
+// JOIN_REQUEST
+message JoinRequest {
+  required string group = 1;
+  required ServiceDefinition service = 2;
+}
+
+// LEAVE_REQUEST
+message LeaveRequest {
+  required string group = 1;
+  required ServiceDefinition service = 2;
+}
+
+// SNAPSHOT_REQUEST
+message SnapshotRequest {
+  required string group = 1;
+}
+
+// WATCH_REQUEST
+message WatchRequest {
+  required string group = 1;
+}
+
+// IGNORE_REQUEST
+message IgnoreRequest {
+  required string group = 1;
+}
+
+// SNAPSHOT_RESPONSE
+message SnapshotResponse {
+  repeated ServiceDefinition services = 1;
+}
+
+// ERROR_RESPONSE
+message ErrorResponse {
+  required string description = 2;
+}
+
+// The basic unit of communication is a message. The connection can be used to
+// send requests but also to receive requests. This message allows us to easily
+// figure out what kind of message is being sent.
+message Message {
+  // The sequence number identifies a request/response pair. Incoming requests
+  // may have the same sequence number as an outgoing request so implementations
+  // should separate the two namespaces.
+  required uint64 sequence = 1;
+
+  // The message type identifies the interpretation of payload.
+  required MessageType type = 2;
+
+  // Uninterpreted message.
+  required bytes payload = 3;
+}
